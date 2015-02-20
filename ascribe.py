@@ -5,6 +5,7 @@ from urllib.request import urlretrieve
 
 from PIL import Image as PILImage
 
+# pip install git+https://github.com/brechtm/rinohtype.git@ascribe
 from rinoh.font import TypeFace
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM
