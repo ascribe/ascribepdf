@@ -27,6 +27,9 @@ from rinoh.draw import HexColor
 
 from rinohlib.fonts.texgyre.pagella import typeface as pagella
 
+from flask import Flask, send_file
+app = Flask(__name__)
+
 
 SAMPLE_INPUT = dict(artist='Terry Artist',
                     title='Lakeside',
@@ -185,6 +188,14 @@ class AscribeCertificate(Document):
         self.add_page(page, 1)
 
 
-if __name__ == '__main__':
+@app.route("/")
+def certificate():
     certificate = AscribeCertificate()
-    certificate.render('test')
+    pdf_file = certificate.render()
+    return send_file(pdf_file,
+                     attachment_filename='certificate.pdf',
+                     mimetype='application/pdf')
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
