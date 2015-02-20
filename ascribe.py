@@ -213,9 +213,11 @@ def certificate():
     data = json.loads(json_data)
     certificate = AscribeCertificate(data)
     pdf_file = certificate.render()
-    return send_file(pdf_file,
-                     attachment_filename='certificate.pdf',
-                     mimetype='application/pdf')
+    response = send_file(pdf_file,
+                         attachment_filename='certificate.pdf',
+                         mimetype='application/pdf')
+    response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+    return response
 
 
 if __name__ == "__main__":
