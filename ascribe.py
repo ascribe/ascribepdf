@@ -3,6 +3,8 @@ from io import BytesIO
 from time import strptime, strftime
 from urllib.request import urlretrieve
 
+import json
+
 from PIL import Image as PILImage
 
 # pip install git+https://github.com/brechtm/rinohtype.git@ascribe
@@ -28,25 +30,42 @@ from rinoh.draw import HexColor
 
 from rinohlib.fonts.texgyre.pagella import typeface as pagella
 
-from flask import Flask, send_file
+from flask import Flask, request, send_file
 app = Flask(__name__)
 
 
-SAMPLE_INPUT = dict(artist='Terry Artist',
-                    title='Lakeside',
-                    year=1998,
-                    editions=(1, 10),
-                    status='Loaning',
-                    owner=('John Artist', 'john@artist.com'),
-                    crypto_id='jisadf8734hf83hsdfjklshdf3',
-                    ownership_history=[('2014/11/13 07:11',
-                                        'John Artist', 'john@artist.com')],
-                    loan_history=[('2014/11/13 11:11',
-                                   'John Artist', 'larry@gallery.com')],
-                    image_url='https://ascribe0.s3.amazonaws.com/media/thumbnails/14171888825/b55dcae37fa6b9c82330fd5d6800a15ee14ca41cdd0bcb592579cf9eba16c11f.png',
-                    # image_url='https://ascribe0.s3.amazonaws.com/media/thumbnails/ascribe_spiral.png',
-                    # image_url='https://ascribe0.s3.amazonaws.com/media/thumbnails/141657867566/56ff34a8ddd324bcde6310207476fa921b63bb5a6fdb3b9ee7bc305dcce6d03e.jpg',
-)
+# sample JSON input
+# {
+#   "image_url": "https:\/\/ascribe0.s3.amazonaws.com\/media\/thumbnails\/14171888825\/b55dcae37fa6b9c82330fd5d6800a15ee14ca41cdd0bcb592579cf9eba16c11f.png",
+#   "artist": "Terry Artist",
+#   "crypto_id": "jisadf8734hf83hsdfjklshdf3",
+#   "title": "Lakeside",
+#   "ownership_history": [
+#     [
+#       "2014\/11\/13 07:11",
+#       "John Artist",
+#       "john@artist.com"
+#     ]
+#   ],
+#   "owner": [
+#     "John Artist",
+#     "john@artist.com"
+#   ],
+#   "editions": [
+#     1,
+#     10
+#   ],
+#   "status": "Loaning",
+#   "loan_history": [
+#     [
+#       "2014\/11\/13 11:11",
+#       "John Artist",
+#       "larry@gallery.com"
+#     ]
+#   ],
+#   "year": 1998
+# }
+
 
 DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
 
@@ -102,17 +121,6 @@ STYLESHEET['section title'] = ParagraphStyle(base='default',
                                              space_below=8*PT)
 
 
-IMAGE = BytesIO()
-f, _ = urlretrieve(SAMPLE_INPUT['image_url'])
-input_image = PILImage.open(f)
-if 'transparency' in input_image.info:
-    print('TRANSP')
-    foreground = input_image.convert('RGBA')
-    background = PILImage.new('RGBA', foreground.size, (255, 255, 255, 255))
-    input_image = PILImage.alpha_composite(background, foreground)
-input_image.convert('RGB').save(IMAGE, 'PDF') #, **pilim.info) #, Quality=100)
-
-
 class AscribePage(Page):
     topmargin = bottommargin = 2*CM
     leftmargin = rightmargin = 2*CM
@@ -142,41 +150,51 @@ class AscribePage(Page):
 class AscribeCertificate(Document):
     namespace = 'http://www.mos6581.org/ns/rficpaper'
 
-    def __init__(self):
-        title = ' - '.join((SAMPLE_INPUT['artist'], SAMPLE_INPUT['title']))
+    def __init__(self, data):
+        title = ' - '.join((data['artist'], data['title']))
         super().__init__(STYLESHEET, backend=pdf, title=title)
+
+        image_data = BytesIO()
+        f, _ = urlretrieve(data['image_url'])
+        input_image = PILImage.open(f)
+        if 'transparency' in input_image.info:
+            print('TRANSP')
+            foreground = input_image.convert('RGBA')
+            background = PILImage.new('RGBA', foreground.size, (255, 255, 255, 255))
+            input_image = PILImage.alpha_composite(background, foreground)
+        input_image.convert('RGB').save(image_data, 'PDF') #, **pilim.info) #, Quality=100)
         self.image = Chain(self)
-        self.image << Image(IMAGE, width=100*PERCENT)
+        self.image << Image(image_data, width=100*PERCENT)
 
         self.text = Chain(self)
-        self.text << Paragraph(SAMPLE_INPUT['artist'], style='artist')
-        self.text << Paragraph(SAMPLE_INPUT['title'], style='title')
-        self.text << Paragraph(str(SAMPLE_INPUT['year']), style='year')
+        self.text << Paragraph(data['artist'], style='artist')
+        self.text << Paragraph(data['title'], style='title')
+        self.text << Paragraph(str(data['year']), style='year')
 
         fields = []
-        nr_edition, total_editions = SAMPLE_INPUT['editions']
+        nr_edition, total_editions = data['editions']
         fields.append(LabeledFlowable(Paragraph('Editions:'),
                                       Paragraph('{}/{}'.format(nr_edition,
                                                                total_editions))))
         fields.append(LabeledFlowable(Paragraph('Status:'),
-                                      Paragraph(SAMPLE_INPUT['status'])))
-        owner_name, owner_email = SAMPLE_INPUT['owner']
+                                      Paragraph(data['status'])))
+        owner_name, owner_email = data['owner']
         email_link = AnnotatedText(owner_email,
                                    annotation=HyperLink('mailto:' + owner_email))
         fields.append(LabeledFlowable(Paragraph('Owner:'),
                                       Paragraph(owner_name + ', ' + email_link)))
         fields.append(LabeledFlowable(Paragraph('Crypto ID:'),
-                                      Paragraph(SAMPLE_INPUT['crypto_id'])))
+                                      Paragraph(data['crypto_id'])))
         self.text << FieldList(fields)
 
         self.text << Paragraph('Provenance/Ownership History',
                                style='section title')
-        self._history(SAMPLE_INPUT['ownership_history'],
+        self._history(data['ownership_history'],
                       'ownership ascribed to')
 
         self.text << Paragraph('Consignment/Loan History',
                                style='section title')
-        self._history(SAMPLE_INPUT['loan_history'], 'loaned to')
+        self._history(data['loan_history'], 'loaned to')
 
     def _history(self, items, action):
         for dtime_str, name, email in items:
@@ -189,9 +207,11 @@ class AscribeCertificate(Document):
         self.add_page(page, 1)
 
 
-@app.route("/")
+@app.route('/', methods=['POST'])
 def certificate():
-    certificate = AscribeCertificate()
+    json_data = request.form['data']
+    data = json.loads(json_data)
+    certificate = AscribeCertificate(data)
     pdf_file = certificate.render()
     return send_file(pdf_file,
                      attachment_filename='certificate.pdf',
