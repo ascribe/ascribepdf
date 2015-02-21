@@ -209,6 +209,8 @@ class AscribeCertificate(Document):
 
 @app.route('/', methods=['POST'])
 def certificate():
+    print(request)
+    print(request.form)
     json_data = request.form['data']
     data = json.loads(json_data)
     certificate = AscribeCertificate(data)
