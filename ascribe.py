@@ -79,7 +79,7 @@ MATCHER['logotype'] = StyledText.like('logotype')
 MATCHER['image'] = Image
 
 MATCHER['default'] = Paragraph
-MATCHER['artist'] = Paragraph.like('artist')
+MATCHER['artist_name'] = Paragraph.like('artist_name')
 MATCHER['title'] = Paragraph.like('title')
 MATCHER['year'] = Paragraph.like('year')
 MATCHER['field list'] = FieldList
@@ -105,7 +105,7 @@ STYLESHEET['logotype'] = TextStyle(typeface=ASCRIBE_TYPEFACE,
 STYLESHEET['default'] = ParagraphStyle(typeface=pagella,
                                        font_size=12*PT,
                                        space_below=6*PT)
-STYLESHEET['artist'] = ParagraphStyle(base='default',
+STYLESHEET['artist_name'] = ParagraphStyle(base='default',
                                       font_size=14*PT)
 STYLESHEET['title'] = ParagraphStyle(base='default',
                                      font_weight=BOLD,
@@ -151,11 +151,11 @@ class AscribeCertificate(Document):
     namespace = 'http://www.mos6581.org/ns/rficpaper'
 
     def __init__(self, data):
-        title = ' - '.join((data['artist'], data['title']))
+        title = ' - '.join((data['artist_name'], data['title']))
         super().__init__(STYLESHEET, backend=pdf, title=title)
 
         image_data = BytesIO()
-        f, _ = urlretrieve(data['image_url'])
+        f, _ = urlretrieve(data['thumbnail'])
         input_image = PILImage.open(f)
         if 'transparency' in input_image.info:
             print('TRANSP')
@@ -167,40 +167,40 @@ class AscribeCertificate(Document):
         self.image << Image(image_data, width=100*PERCENT)
 
         self.text = Chain(self)
-        self.text << Paragraph(data['artist'], style='artist')
+        self.text << Paragraph(data['artist_name'], style='artist')
         self.text << Paragraph(data['title'], style='title')
-        self.text << Paragraph(str(data['year']), style='year')
+        self.text << Paragraph(data['yearAndEdition_str'], style='year')
 
         fields = []
-        nr_edition, total_editions = data['editions']
-        fields.append(LabeledFlowable(Paragraph('Editions:'),
-                                      Paragraph('{}/{}'.format(nr_edition,
-                                                               total_editions))))
-        fields.append(LabeledFlowable(Paragraph('Status:'),
-                                      Paragraph(data['status'])))
-        owner_name, owner_email = data['owner']
-        email_link = AnnotatedText(owner_email,
-                                   annotation=HyperLink('mailto:' + owner_email))
+        owner_name = data['owner']
         fields.append(LabeledFlowable(Paragraph('Owner:'),
-                                      Paragraph(owner_name + ', ' + email_link)))
-        fields.append(LabeledFlowable(Paragraph('Crypto ID:'),
-                                      Paragraph(data['crypto_id'])))
+                                      Paragraph(owner_name)))
+        fields.append(LabeledFlowable(Paragraph('Artwork ID:'),
+                                      Paragraph(data['bitcoin_ID_noPrefix'])))
         self.text << FieldList(fields)
 
         self.text << Paragraph('Provenance/Ownership History',
                                style='section title')
-        self._history(data['ownership_history'],
+        self._history(data['ownershipHistory'],
                       'ownership ascribed to')
 
-        self.text << Paragraph('Consignment/Loan History',
+        self.text << Paragraph('Cryptographic Signature',
                                style='section title')
-        self._history(data['loan_history'], 'loaned to')
+        fields = []
+        fields.append(LabeledFlowable(Paragraph('Message:'),
+                                      Paragraph(data['crypto_message'])))
+        # TODO: auto-wrap
+        signature = str(data['crypto_signature'][0])
+        n = 59
+        signature_chunks = [signature[i:i+n] for i in range(0, len(signature), n)]
+        fields.append(LabeledFlowable(Paragraph('Signature:'),
+                                      Paragraph(" ".join(signature_chunks))))
+        self.text << FieldList(fields)
+        # self.text << Paragraph(data['crypto_signature'])
 
     def _history(self, items, action):
-        for dtime_str, name, email in items:
-            dtime = strptime(dtime_str, DATETIME_IN_FMT)
-            self.text << Paragraph(strftime(DATETIME_OUT_FMT, dtime) +
-                                   ' ' + action + ' ' + name + ', ' + email)
+        for dtime_str, name in items:
+            self.text << Paragraph(dtime_str + ' - ' + name)
 
     def setup(self):
         page = AscribePage(self)
