@@ -232,8 +232,8 @@ def certificate():
     json_data = request.form['data']
     data = json.loads(json_data)
     certificate = AscribeCertificate(data)
-    pdf_file = certificate.render('/home/dimi/coa.pdf')
-
+    pdf_file = certificate.render()
+    # pdf_file = certificate.render('/home/dimi/coa.pdf')
     response = send_file(pdf_file,
                          attachment_filename='certificate.pdf',
                          mimetype='application/pdf')
