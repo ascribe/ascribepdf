@@ -12,13 +12,13 @@ from rinoh.font import TypeFace
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM
 
-from rinoh.layout import Container, DownExpandingContainer, Chain
+from rinoh.layout import Container, DownExpandingContainer, Chain, UpExpandingContainer
 from rinoh.dimension import CM, PT, PERCENT
 from rinoh.document import Document, Page, LANDSCAPE
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher
 from rinoh.backend import pdf
-from rinoh.flowable import GroupedFlowablesStyle
+from rinoh.flowable import GroupedFlowablesStyle, GroupedFlowables
 from rinoh.paragraph import Paragraph
 from rinoh.structure import FieldList, LabeledFlowable
 from rinoh.styles import ParagraphStyle
@@ -29,6 +29,7 @@ from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
 from rinoh.draw import HexColor
 
 from rinohlib.fonts.texgyre.pagella import typeface as pagella
+from rinohlib.fonts.texgyre.cursor import typeface as cursor
 
 from flask import Flask, request, send_file
 app = Flask(__name__)
@@ -84,6 +85,9 @@ MATCHER['title'] = Paragraph.like('title')
 MATCHER['year'] = Paragraph.like('year')
 MATCHER['field list'] = FieldList
 MATCHER['section title'] = Paragraph.like('section title')
+MATCHER['footer title'] = Paragraph.like('footer title')
+MATCHER['footer label'] = FieldList.like('footer fieldlist')/LabeledFlowable/Paragraph
+MATCHER['footer content'] = FieldList.like('footer fieldlist')/LabeledFlowable/GroupedFlowables/Paragraph
 
 
 MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('Mercury_Medium.otf',
@@ -119,10 +123,19 @@ STYLESHEET['section title'] = ParagraphStyle(base='default',
                                              font_size=16*PT,
                                              space_above=6*PT,
                                              space_below=8*PT)
-
+STYLESHEET['footer title'] = ParagraphStyle(base='section title',
+                                             font_size=14*PT,
+                                             space_below=5*PT)
+STYLESHEET['footer label'] = ParagraphStyle(base='default',
+                                             font_size=10*PT,
+                                             font_color=HexColor("#444444"))
+STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
+                                              font_weight=BOLD,
+                                              font_color=HexColor("#48DACB"))
 
 class AscribePage(Page):
-    topmargin = bottommargin = 2*CM
+    topmargin = 2*CM
+    bottommargin = 1*CM
     leftmargin = rightmargin = 2*CM
     left_column_width = 10*CM
     column_spacing = 1*CM
@@ -146,6 +159,25 @@ class AscribePage(Page):
                                  self.header.bottom,
                                  chain=document.text)
 
+        self.footer = UpExpandingContainer('footer', body, 0*PT, body.height)
+
+        # import pdb; pdb.set_trace()
+        self.footer << Paragraph('Cryptographic Signature', style='footer title')
+        fields = []
+        fields.append(LabeledFlowable(Paragraph('Message:'),
+                                      Paragraph(document.data['crypto_message'],
+                                                style=STYLESHEET['footer content'])))
+        fields.append(LabeledFlowable(Paragraph('Signature:'),
+                                      Paragraph(self._signature(document),
+                                                style=ParagraphStyle(base='footer content', typeface=cursor))))
+        self.footer << FieldList(fields, style='footer fieldlist')
+
+    def _signature(self, document):
+        # TODO: auto-wrap
+        signature = str(document.data['crypto_signature'])
+        n = 110
+        return " ".join([signature[i:i+n] for i in range(0, len(signature), n)])
+
 
 class AscribeCertificate(Document):
     namespace = 'http://www.mos6581.org/ns/rficpaper'
@@ -153,7 +185,7 @@ class AscribeCertificate(Document):
     def __init__(self, data):
         title = ' - '.join((data['artist_name'], data['title']))
         super().__init__(STYLESHEET, backend=pdf, title=title)
-
+        self.data = data
         image_data = BytesIO()
         f, _ = urlretrieve(data['thumbnail'])
         input_image = PILImage.open(f)
@@ -173,29 +205,15 @@ class AscribeCertificate(Document):
 
         fields = []
         owner_name = data['owner']
-        fields.append(LabeledFlowable(Paragraph('Owner:'),
-                                      Paragraph(owner_name)))
-        fields.append(LabeledFlowable(Paragraph('Artwork ID:'),
-                                      Paragraph(data['bitcoin_ID_noPrefix'])))
+        fields.append(LabeledFlowable(Paragraph('Filetype:'), Paragraph(data['digital_work']['mime'])))
+        fields.append(LabeledFlowable(Paragraph('Owner:'), Paragraph(owner_name)))
+        fields.append(LabeledFlowable(Paragraph('Artwork ID:'), Paragraph(data['bitcoin_ID_noPrefix'])))
         self.text << FieldList(fields)
 
-        self.text << Paragraph('Provenance/Ownership History',
-                               style='section title')
-        self._history(data['ownershipHistory'],
-                      'ownership ascribed to')
+        self.text << Paragraph('Provenance/Ownership History', style='section title')
+        self._history(data['ownershipHistory'], 'ownership ascribed to')
 
-        self.text << Paragraph('Cryptographic Signature',
-                               style='section title')
-        fields = []
-        fields.append(LabeledFlowable(Paragraph('Message:'),
-                                      Paragraph(data['crypto_message'])))
-        # TODO: auto-wrap
-        signature = str(data['crypto_signature'][0])
-        n = 59
-        signature_chunks = [signature[i:i+n] for i in range(0, len(signature), n)]
-        fields.append(LabeledFlowable(Paragraph('Signature:'),
-                                      Paragraph(" ".join(signature_chunks))))
-        self.text << FieldList(fields)
+
         # self.text << Paragraph(data['crypto_signature'])
 
     def _history(self, items, action):
@@ -214,7 +232,8 @@ def certificate():
     json_data = request.form['data']
     data = json.loads(json_data)
     certificate = AscribeCertificate(data)
-    pdf_file = certificate.render()
+    pdf_file = certificate.render('/home/dimi/coa.pdf')
+
     response = send_file(pdf_file,
                          attachment_filename='certificate.pdf',
                          mimetype='application/pdf')
