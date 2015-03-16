@@ -66,6 +66,16 @@ app = Flask(__name__)
 #   ],
 #   "year": 1998
 # }
+data_json = '{"title": "Coa", ' \
+            '"artist_name": "Coa Tester", ' \
+            '"edition_number": 1, "num_editions": 3, "yearAndEdition_str": "2012, 1/3", ' \
+            '"bitcoin_ID_noPrefix": "1GETTkZMXZEWQfBHWDkMiQX97N7P5USDRQ", ' \
+            '"owner": "coatest@mailinator.com", ' \
+            '"ownershipHistory": [["Mar. 16, 2015, 08:42:57", "Registered by coatest@mailinator.com"]], ' \
+            '"thumbnail": "https://ascribe0.s3.amazonaws.com/live/coatest@mailinator.com/2014-10-28 12.47.09 hdr/thumbnailfile/2014-10-28 12.47.09 hdr.jpg.png", ' \
+            '"digital_work": {"user": "coatest@mailinator.com", "url": "https://ascribe0.s3.amazonaws.com/live/coatest@mailinator.com/2014-10-28 12.47.09 hdr/digitalworkfile/2014-10-28 12.47.09 hdr.jpg", "url_safe": "https://ascribe0.s3.amazonaws.com/live%2Fcoatest%40mailinator.com%2F2014-10-28+12.47.09+hdr%2Fdigitalworkfile%2F2014-10-28+12.47.09+hdr.jpg", "hash": "a349f07b43c65d23541a70d20d9aa817", "mime": "image", "encoding_urls": null, "isEncoding": false}, ' \
+            '"crypto_message": "Coa Tester*Coa*1/3*2012*2015Mar16-08:42:57", ' \
+            '"crypto_signature": "A28AF3F40B45060110512E07E62954BFC88D450753FDA4645318BFAEDE2581941AA3BBD547C4D8262221E8896594AD3AC26937825AA013D1B28C7FA11CA7197A8A0DACA16ED99C61A1E44412C8C96246460D8EA916BBA4BB758101DE21938FD73A528A1C69282EB162D88FD6585B77E768CB479EE80501647B14DCA8B9BAC876L"}'
 
 
 DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
@@ -225,14 +235,15 @@ class AscribeCertificate(Document):
         self.add_page(page, 1)
 
 
-@app.route('/', methods=['POST'])
+@app.route('/', methods=['GET'])
 def certificate():
     print(request)
     print(request.form)
     json_data = request.form['data']
+    # json_data = data_json
     data = json.loads(json_data)
-    certificate = AscribeCertificate(data)
     try:
+        certificate = AscribeCertificate(data)
         pdf_file = certificate.render()
         # pdf_file = certificate.render('/home/dimi/coa.pdf')
         response = send_file(pdf_file,
