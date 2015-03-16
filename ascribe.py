@@ -137,6 +137,7 @@ STYLESHEET['footer title'] = ParagraphStyle(base='section title',
                                              space_below=5*PT)
 STYLESHEET['footer label'] = ParagraphStyle(base='default',
                                              font_size=10*PT,
+                                             space_above=1*PT,
                                              font_color=HexColor("#444444"))
 STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
                                               font_weight=BOLD,
@@ -180,6 +181,9 @@ class AscribePage(Page):
                                       Paragraph(self._signature(document),
                                                 style=ParagraphStyle(base='footer content', typeface=cursor))))
         self.footer << FieldList(fields, style='footer fieldlist')
+        verify_link = AnnotatedText('go to ascribe.io/verify to verify',
+                                   annotation=HyperLink('https://www.ascribe.io/verify'))
+        self.footer << Paragraph(verify_link, style=STYLESHEET['footer label'])
 
     def _signature(self, document):
         # TODO: auto-wrap
