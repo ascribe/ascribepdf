@@ -5,5 +5,5 @@ Pillow==2.7.0
 Werkzeug==0.10.1
 gunicorn==19.2.1
 itsdangerous==0.24
-requests=2.6.0
+requests==2.6.0
 -e git+https://github.com/brechtm/rinohtype.git@6b89a5104789ee105fc24d22f6e97ee53f1a8541#egg=RinohType-origin/ascribe
