@@ -232,13 +232,17 @@ def certificate():
     json_data = request.form['data']
     data = json.loads(json_data)
     certificate = AscribeCertificate(data)
-    pdf_file = certificate.render()
-    # pdf_file = certificate.render('/home/dimi/coa.pdf')
-    response = send_file(pdf_file,
-                         attachment_filename='certificate.pdf',
-                         mimetype='application/pdf')
-    response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
-    return response
+    try:
+        pdf_file = certificate.render()
+        # pdf_file = certificate.render('/home/dimi/coa.pdf')
+        response = send_file(pdf_file,
+                             attachment_filename='certificate.pdf',
+                             mimetype='application/pdf')
+        response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+        return response
+    except Exception as e:
+        print(str(e))
+        pass
 
 
 if __name__ == "__main__":
