@@ -1,7 +1,6 @@
-
 from io import BytesIO
 from time import strptime, strftime
-from urllib.request import urlretrieve
+import requests
 
 import json
 
@@ -197,8 +196,10 @@ class AscribeCertificate(Document):
         super().__init__(STYLESHEET, backend=pdf, title=title)
         self.data = data
         image_data = BytesIO()
-        f, _ = urlretrieve(data['thumbnail'])
-        input_image = PILImage.open(f)
+        r = requests.get(data['thumbnail'])
+        buff = BytesIO(r.content)
+        buff.seek(0)
+        input_image = PILImage.open(buff)
         if 'transparency' in input_image.info:
             print('TRANSP')
             foreground = input_image.convert('RGBA')
@@ -235,13 +236,14 @@ class AscribeCertificate(Document):
         self.add_page(page, 1)
 
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['POST'])
 def certificate():
     print(request)
     print(request.form)
     json_data = request.form['data']
     # json_data = data_json
     data = json.loads(json_data)
+
     try:
         certificate = AscribeCertificate(data)
         pdf_file = certificate.render()
