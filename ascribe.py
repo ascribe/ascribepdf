@@ -7,9 +7,10 @@ import json
 from PIL import Image as PILImage
 
 # pip install git+https://github.com/brechtm/rinohtype.git@ascribe
-from rinoh.font import TypeFace
+from rinoh.font import TypeFace, ITALIC
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM
+from rinoh.font.type1 import Type1Font
 
 from rinoh.layout import Container, DownExpandingContainer, Chain, UpExpandingContainer
 from rinoh.dimension import CM, PT, PERCENT
@@ -29,42 +30,13 @@ from rinoh.draw import HexColor
 
 from rinohlib.fonts.texgyre.pagella import typeface as pagella
 from rinohlib.fonts.texgyre.cursor import typeface as cursor
+# from rinoh.fonts.adobe14 import times, courier, helvetica
 
 from flask import Flask, request, send_file
 app = Flask(__name__)
 
 
 # sample JSON input
-# {
-#   "image_url": "https:\/\/ascribe0.s3.amazonaws.com\/media\/thumbnails\/14171888825\/b55dcae37fa6b9c82330fd5d6800a15ee14ca41cdd0bcb592579cf9eba16c11f.png",
-#   "artist": "Terry Artist",
-#   "crypto_id": "jisadf8734hf83hsdfjklshdf3",
-#   "title": "Lakeside",
-#   "ownership_history": [
-#     [
-#       "2014\/11\/13 07:11",
-#       "John Artist",
-#       "john@artist.com"
-#     ]
-#   ],
-#   "owner": [
-#     "John Artist",
-#     "john@artist.com"
-#   ],
-#   "editions": [
-#     1,
-#     10
-#   ],
-#   "status": "Loaning",
-#   "loan_history": [
-#     [
-#       "2014\/11\/13 11:11",
-#       "John Artist",
-#       "larry@gallery.com"
-#     ]
-#   ],
-#   "year": 1998
-# }
 data_json = '{"title": "Coa", ' \
             '"artist_name": "Coa Tester", ' \
             '"edition_number": 1, "num_editions": 3, "yearAndEdition_str": "2012, 1/3", ' \
@@ -99,10 +71,20 @@ MATCHER['footer label'] = FieldList.like('footer fieldlist')/LabeledFlowable/Par
 MATCHER['footer content'] = FieldList.like('footer fieldlist')/LabeledFlowable/GroupedFlowables/Paragraph
 
 
-MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('Mercury_Medium.otf',
-                                                    weight=MEDIUM))
-ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont('ascribe.ttf',
-                                                    weight=REGULAR))
+times_regular = Type1Font('fonts/n021003l', weight=REGULAR)
+times_italic = Type1Font('fonts/n021023l', weight=REGULAR, slant=ITALIC)
+times_bold = Type1Font('fonts/n021004l', weight=BOLD)
+times_bold_italic = Type1Font('fonts/n021024l', weight=BOLD, slant=ITALIC)
+
+times = TypeFace('URW Times', times_regular, times_italic, times_bold, times_bold_italic)
+
+nimbus_medium = Type1Font('fonts/n022003l', weight=MEDIUM)
+nimbus_bold = Type1Font('fonts/n022004l', weight=BOLD)
+nimbus_mono = TypeFace('URW Nimbus', nimbus_medium, nimbus_bold)
+
+MERCURY_TYPEFACE = TypeFace('Mercury', Type1Font('fonts/mercurymedium', weight=MEDIUM))
+# MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('fonts/Mercury_Medium.otf',weight=MEDIUM))
+ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont('fonts/ascribe.ttf', weight=REGULAR))
 ASCRIBE_GREEN = HexColor('48DACB')
 
 
@@ -115,7 +97,7 @@ STYLESHEET['logotype'] = TextStyle(typeface=ASCRIBE_TYPEFACE,
                                    font_size=23*PT,
                                    font_color=ASCRIBE_GREEN)
 
-STYLESHEET['default'] = ParagraphStyle(typeface=pagella,
+STYLESHEET['default'] = ParagraphStyle(typeface=times,
                                        font_size=12*PT,
                                        space_below=6*PT)
 STYLESHEET['artist_name'] = ParagraphStyle(base='default',
@@ -160,6 +142,7 @@ class AscribePage(Page):
         self.header = DownExpandingContainer('header', body, 0*PT, 0*PT)
         logotype = SingleStyledText('\ue603', style='logotype')
         self.header << Paragraph('ascribe ' + logotype, style='logo')
+        # self.header << Paragraph(logotype, style='logo')
 
         self.column1 = Container('column1', body, 0*PT, self.header.bottom,
                                  width=self.left_column_width,
@@ -179,7 +162,7 @@ class AscribePage(Page):
                                                 style=STYLESHEET['footer content'])))
         fields.append(LabeledFlowable(Paragraph('Signature:'),
                                       Paragraph(self._signature(document),
-                                                style=ParagraphStyle(base='footer content', typeface=cursor))))
+                                                style=ParagraphStyle(base='footer content', typeface=nimbus_mono))))
         self.footer << FieldList(fields, style='footer fieldlist')
         verify_link = AnnotatedText('go to ascribe.io/verify to verify',
                                    annotation=HyperLink('https://www.ascribe.io/verify'))
@@ -245,7 +228,6 @@ def certificate():
     print(request)
     print(request.form)
     json_data = request.form['data']
-    # json_data = data_json
     data = json.loads(json_data)
 
     try:
@@ -261,6 +243,23 @@ def certificate():
         print(str(e))
         pass
 
+
+@app.route('/', methods=['GET'])
+def test():
+    json_data = data_json
+    data = json.loads(json_data)
+    try:
+        certificate = AscribeCertificate(data)
+        pdf_file = certificate.render()
+        # pdf_file = certificate.render('/home/dimi/coa.pdf')
+        response = send_file(pdf_file,
+                             attachment_filename='certificate.pdf',
+                             mimetype='application/pdf')
+        response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+        return response
+    except Exception as e:
+        print(str(e))
+        pass
 
 if __name__ == "__main__":
     app.run(debug=True)
