@@ -38,7 +38,7 @@ app = Flask(__name__)
 
 # sample JSON input
 data_json = '{"title": "Coa", ' \
-            '"artist_name": "Coa Tester", ' \
+            '"artist_name": "Coa Tester met Ü", ' \
             '"edition_number": 1, "num_editions": 3, "yearAndEdition_str": "2012, 1/3", ' \
             '"bitcoin_ID_noPrefix": "1GETTkZMXZEWQfBHWDkMiQX97N7P5USDRQ", ' \
             '"owner": "coatest@mailinator.com", ' \
@@ -48,6 +48,7 @@ data_json = '{"title": "Coa", ' \
             '"crypto_message": "Coa Tester*Coa*1/3*2012*2015Mar16-08:42:57", ' \
             '"crypto_signature": "A28AF3F40B45060110512E07E62954BFC88D450753FDA4645318BFAEDE2581941AA3BBD547C4D8262221E8896594AD3AC26937825AA013D1B28C7FA11CA7197A8A0DACA16ED99C61A1E44412C8C96246460D8EA916BBA4BB758101DE21938FD73A528A1C69282EB162D88FD6585B77E768CB479EE80501647B14DCA8B9BAC876L"}'
 
+data_json_faulty = '{"title": "Bellowing Shaman", "artist_name": "Alex Broudy", "edition_number": 1, "num_editions": 1, "yearAndEdition_str": "2011, 1/1", "bitcoin_ID_noPrefix": "1Pz4aYLG9NyV7XGhvUqLwTRwiujzmTF3oB", "owner": "info-0", "ownershipHistory": [["May. 18, 2015, 15:21:55", "Registered by info-0"]], "thumbnail": "https://d1qjsxua1o9x03.cloudfront.net/live/info-0/bellowing shaman/thumbnail/bellowing shaman.png.png", "digital_work": {"url": "https://d1qjsxua1o9x03.cloudfront.net/live/info-0/bellowing shaman/digitalwork/bellowing shaman.png", "url_safe": "https://d1qjsxua1o9x03.cloudfront.net/live%2Finfo-0%2Fbellowing+shaman%2Fdigitalwork%2Fbellowing+shaman.png", "mime": "image", "hash": "7f412c4c809f5826c7b8a28db133b572", "encoding_urls": null, "isEncoding": 0}, "crypto_message": "Alex Broudy*Bellowing Shaman*1/1*2011*2015May18-15:21:55", "crypto_signature": "31C0BE79370593A43049378751D860F1B0280F5B1B6286E3E1615BD6A735EAF744B30F8A920A6695CF87996561F11A8BF2AFAA518936F39F76B3435DAD8ABFB532DCC88538F2EFD6FB7EEF7DA5B6F717E07A8010AE57B36B464CAD112A61206CEDDB9A318F1BFD05BC5F940E53A1329556056FC0FEDD870F6121AE52D3798C90L"}'
 
 DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
 
@@ -154,7 +155,6 @@ class AscribePage(Page):
 
         self.footer = UpExpandingContainer('footer', body, 0*PT, body.height)
 
-        # import pdb; pdb.set_trace()
         self.footer << Paragraph('Cryptographic Signature', style='footer title')
         fields = []
         fields.append(LabeledFlowable(Paragraph('Message:'),
@@ -194,13 +194,20 @@ class AscribeCertificate(Document):
             input_image = PILImage.alpha_composite(background, foreground)
         input_image.convert('RGB').save(image_data, 'PDF') #, **pilim.info) #, Quality=100)
         self.image = Chain(self)
-        self.image << Image(image_data, width=100*PERCENT)
-
+        # assumes max_width < 350
+        (_width, _length) = input_image.size
+        max_length = 200
+        if _length > max_length:
+            width_pct = int(max_length/_length * 100)
+        else:
+            width_pct = 100
+        print('width_pct: %d' % width_pct)
+        self.image << Image(image_data, width=width_pct*PERCENT)
+        # import pdb; pdb.set_trace()
         self.text = Chain(self)
         self.text << Paragraph(data['artist_name'], style='artist')
         self.text << Paragraph(data['title'], style='title')
         self.text << Paragraph(data['yearAndEdition_str'], style='year')
-
         fields = []
         owner_name = data['owner']
         fields.append(LabeledFlowable(Paragraph('Filetype:'), Paragraph(data['digital_work']['mime'])))
@@ -228,6 +235,7 @@ def certificate():
     print(request)
     print(request.form)
     json_data = request.form['data']
+
     data = json.loads(json_data)
 
     try:
@@ -246,9 +254,9 @@ def certificate():
 
 @app.route('/', methods=['GET'])
 def test():
-    json_data = data_json
-    data = json.loads(json_data)
     try:
+        json_data = data_json_faulty
+        data = json.loads(json_data)
         certificate = AscribeCertificate(data)
         pdf_file = certificate.render()
         # pdf_file = certificate.render('/home/dimi/coa.pdf')
