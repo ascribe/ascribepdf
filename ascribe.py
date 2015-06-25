@@ -212,11 +212,18 @@ class AscribeCertificate(Document):
         owner_name = data['owner']
         fields.append(LabeledFlowable(Paragraph('Filetype:'), Paragraph(data['digital_work']['mime'])))
         fields.append(LabeledFlowable(Paragraph('Owner:'), Paragraph(owner_name)))
-        fields.append(LabeledFlowable(Paragraph('Artwork ID:'), Paragraph(data['bitcoin_ID_noPrefix'])))
+        if 'bitcoin_ID_noPrefix' in data.keys():
+            bitcoin_id = data['bitcoin_ID_noPrefix']
+        else:
+            bitcoin_id = data['bitcoin_id']
+        fields.append(LabeledFlowable(Paragraph('Artwork ID:'), Paragraph(bitcoin_id)))
         self.text << FieldList(fields)
-
+        if 'ownershipHistory' in data.keys():
+            history = data['ownershipHistory']
+        else:
+            history = data['ownership_history']
         self.text << Paragraph('Provenance/Ownership History', style='section title')
-        self._history(data['ownershipHistory'], 'ownership ascribed to')
+        self._history(history, 'ownership ascribed to')
 
 
         # self.text << Paragraph(data['crypto_signature'])
