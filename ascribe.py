@@ -196,7 +196,9 @@ class AscribeCertificate(Document):
         self.image = Chain(self)
         # assumes max_width < 350
         (_width, _length) = input_image.size
-        max_length = 200
+        print('width: %d' % _width)
+        print('length: %d' % _length)
+        max_length = 400
         if _length > max_length:
             width_pct = int(max_length/_length * 100)
         else:
