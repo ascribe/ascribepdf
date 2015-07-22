@@ -277,8 +277,8 @@ def certificate():
 @app.route('/', methods=['GET'])
 def test():
     try:
-        json_data = json.dumps(data_faulty)
-        # json_data = json.dumps(data_test)
+        # json_data = json.dumps(data_faulty)
+        json_data = json.dumps(data_test)
         data = json.loads(json_data)
         certificate = AscribeCertificate(data)
         pdf_file = certificate.render()
