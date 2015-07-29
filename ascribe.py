@@ -64,7 +64,7 @@ data_faulty = {'yearAndEdition_str': '111, 1/12', 'bitcoin_id': '1LaemJEou4pYLDC
                                 'id': 2310, 'isEncoding': 0}, 'title': '1 long',
                'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F4998038c-3ea0-4502-9a3a-4e2ae6c761f2%2Fthumbnail%2F600x600%2Fthumbnail.png',
                'crypto_signature': '65312234EDEFE06054DCDEE309ED3EDDAE91CC7D542D5F7085CB40F0CA24A24642787AF8C798BE4AD122E6A40E7BE9D0B44AA75CB5D839133098D49D4E1A4AB5BE9CF7262089258460E2C61B3C810DBCA053F3844A93022A33037661414219B84CAFB5E0CB19C2688AA8C2134FDF69AE9C49714EE4E039A8D342D6F8D276A4BDL'}
-MAX_THUMB_HEIGHT = 400
+MIN_THUMB_ASPECT = 0.9
 
 DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
 
@@ -210,12 +210,12 @@ class AscribeCertificate(Document):
             input_image = PILImage.alpha_composite(background, foreground)
         input_image.convert('RGB').save(image_data, 'PDF')  # , **pilim.info) #, Quality=100)
         self.image = Chain(self)
-        # assumes max_width < 350
         (_width, _height) = input_image.size
         print('width: %d' % _width)
         print('length: %d' % _height)
-        if _height > MAX_THUMB_HEIGHT:
-            width_pct = int(MAX_THUMB_HEIGHT / _height * 100)
+        aspect_ratio = _width / _height
+        if aspect_ratio < MIN_THUMB_ASPECT:
+            width_pct = aspect_ratio / MIN_THUMB_ASPECT * 100
         else:
             width_pct = 100
         print('width_pct: %d' % width_pct)
