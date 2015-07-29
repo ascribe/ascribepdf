@@ -19,7 +19,8 @@ from rinoh.document import Document, Page, LANDSCAPE
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher
 from rinoh.backend import pdf
-from rinoh.flowable import GroupedFlowablesStyle, GroupedFlowables
+from rinoh.flowable import (GroupedFlowablesStyle, GroupedFlowables,
+                            HorizontallyAlignedFlowableStyle, CENTER)
 from rinoh.paragraph import Paragraph
 from rinoh.structure import FieldList, LabeledFlowable
 from rinoh.styles import ParagraphStyle
@@ -138,6 +139,7 @@ STYLESHEET['footer label'] = ParagraphStyle(base='default',
 STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
                                               font_weight=BOLD,
                                               font_color=HexColor("#48DACB"))
+STYLESHEET['image'] = HorizontallyAlignedFlowableStyle(horizontal_align=CENTER)
 
 
 class AscribePage(Page):
