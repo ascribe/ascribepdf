@@ -99,8 +99,8 @@ nimbus_bold = Type1Font(PATH + '/fonts/n022004l', weight=BOLD)
 nimbus_mono = TypeFace('URW Nimbus', nimbus_medium, nimbus_bold)
 
 MERCURY_TYPEFACE = TypeFace('Mercury', Type1Font(PATH + '/fonts/mercurymedium', weight=MEDIUM))
-GIBSON_TYPEFACE_REGULAR = TypeFace('Gibson-Regular', OpenTypeFont(PATH + '/fonts/Gibson-Regular.otf', weight=REGULAR))
-GIBSON_TYPEFACE_LIGHT = TypeFace('Gibson-Light', OpenTypeFont(PATH + '/fonts/Gibson-Light.otf', weight=LIGHT))
+GIBSON_TYPEFACE_REGULAR = TypeFace('Gibson-Regular', OpenTypeFont(PATH + '/fonts/Gibson-Regular.ttf', weight=REGULAR))
+GIBSON_TYPEFACE_LIGHT = TypeFace('Gibson-Light', OpenTypeFont(PATH + '/fonts/Gibson-Light.ttf', weight=LIGHT))
 # MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('fonts/Mercury_Medium.otf',weight=MEDIUM))
 ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont(PATH + '/fonts/ascribe.ttf', weight=REGULAR))
 ASCRIBE_NEW_TYPEFACE = TypeFace('ascribe-new', OpenTypeFont(PATH + '/fonts/ascribe-logo.ttf', weight=REGULAR))
@@ -131,11 +131,12 @@ STYLESHEET['title'] = ParagraphStyle(base='default',
                                      space_below=10 * PT)
 
 STYLESHEET['year'] = ParagraphStyle(base='default-light',
+                                    font_size=11 * PT,
                                     space_below=10 * PT)
 STYLESHEET['field list'] = GroupedFlowablesStyle(space_below=15 * PT)
 STYLESHEET['section title'] = ParagraphStyle(base='default',
                                              font_weight=BOLD,
-                                             font_size=16 * PT,
+                                             font_size=14 * PT,
                                              space_above=6 * PT,
                                              space_below=8 * PT)
 STYLESHEET['footer title'] = ParagraphStyle(base='section title',
@@ -230,19 +231,29 @@ class AscribeCertificate(Document):
         print('width_pct: %d' % width_pct)
         self.image << Image(image_data, width=width_pct * PERCENT)
         self.text = Chain(self)
-        self.text << Paragraph(data['artist_name'], style='artist')
         self.text << Paragraph(data['title'], style='title')
-        self.text << Paragraph(data['yearAndEdition_str'], style='year')
-        fields = []
-        owner_name = data['owner']
-        fields.append(LabeledFlowable(Paragraph('Filetype:'), Paragraph(data['digital_work']['mime'])))
-        fields.append(LabeledFlowable(Paragraph('Owner:'), Paragraph(owner_name)))
+
+        edition = data['yearAndEdition_str'].split(',')[1].rstrip()
+        self.text << LabeledFlowable(Paragraph('Edition: ', style='year'),
+                                     Paragraph(edition, style='year'))
+
+        self.text << LabeledFlowable(Paragraph('Created by: ', style='year'),
+                                     Paragraph(data['artist_name'], style='year'))
+
+        self.text << LabeledFlowable(Paragraph('Owner: ', style='year'), Paragraph(data['owner'], style='year'))
+
         if 'bitcoin_ID_noPrefix' in data.keys():
             bitcoin_id = data['bitcoin_ID_noPrefix']
         else:
             bitcoin_id = data['bitcoin_id']
-        fields.append(LabeledFlowable(Paragraph('Artwork ID:'), Paragraph(bitcoin_id)))
-        self.text << FieldList(fields)
+
+        self.text << Paragraph('Artwork Details:', style='section title')
+
+        self.text << LabeledFlowable(Paragraph('Artwork ID: ', style='year'), Paragraph(bitcoin_id, style='year'))
+
+        self.text << LabeledFlowable(Paragraph('Filetype: ', style='year'),
+                                     Paragraph(data['digital_work']['mime'], style='year'))
+
         if 'ownershipHistory' in data.keys():
             history = data['ownershipHistory']
         else:
@@ -255,7 +266,7 @@ class AscribeCertificate(Document):
 
     def _history(self, items, action):
         for dtime_str, name in items:
-            self.text << Paragraph(dtime_str + ' - ' + name)
+            self.text << Paragraph(dtime_str + ' - ' + name, style='year')
 
     def setup(self):
         page = AscribePage(self)
