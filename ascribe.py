@@ -10,7 +10,7 @@ from PIL import Image as PILImage
 # pip install git+https://github.com/brechtm/rinohtype.git@ascribe
 from rinoh.font import TypeFace, ITALIC
 from rinoh.font.opentype import OpenTypeFont
-from rinoh.font.style import REGULAR, MEDIUM
+from rinoh.font.style import REGULAR, MEDIUM, LIGHT
 from rinoh.font.type1 import Type1Font
 
 from rinoh.layout import Container, DownExpandingContainer, Chain, UpExpandingContainer
@@ -99,29 +99,38 @@ nimbus_bold = Type1Font(PATH + '/fonts/n022004l', weight=BOLD)
 nimbus_mono = TypeFace('URW Nimbus', nimbus_medium, nimbus_bold)
 
 MERCURY_TYPEFACE = TypeFace('Mercury', Type1Font(PATH + '/fonts/mercurymedium', weight=MEDIUM))
+GIBSON_TYPEFACE_REGULAR = TypeFace('Gibson-Regular', OpenTypeFont(PATH + '/fonts/Gibson-Regular.otf', weight=REGULAR))
+GIBSON_TYPEFACE_LIGHT = TypeFace('Gibson-Light', OpenTypeFont(PATH + '/fonts/Gibson-Light.otf', weight=LIGHT))
 # MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('fonts/Mercury_Medium.otf',weight=MEDIUM))
 ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont(PATH + '/fonts/ascribe.ttf', weight=REGULAR))
-ASCRIBE_GREEN = HexColor('48DACB')
+ASCRIBE_NEW_TYPEFACE = TypeFace('ascribe-new', OpenTypeFont(PATH + '/fonts/ascribe-logo.ttf', weight=REGULAR))
+ASCRIBE_GREEN = HexColor('003C69')
+ASCRIBE_BLACK = HexColor('1E1E1E')
 
 STYLESHEET = StyleSheet('ascribe', matcher=MATCHER)
 STYLESHEET['logo'] = ParagraphStyle(typeface=MERCURY_TYPEFACE,
                                     font_size=26 * PT,
                                     font_color=HexColor('222222'),
                                     space_below=36 * PT)
-STYLESHEET['logotype'] = TextStyle(typeface=ASCRIBE_TYPEFACE,
+STYLESHEET['logotype'] = TextStyle(typeface=ASCRIBE_NEW_TYPEFACE,
                                    font_size=23 * PT,
-                                   font_color=ASCRIBE_GREEN)
+                                   font_color=ASCRIBE_BLACK)
 
-STYLESHEET['default'] = ParagraphStyle(typeface=times,
-                                       font_size=12 * PT,
-                                       space_below=6 * PT)
-STYLESHEET['artist_name'] = ParagraphStyle(base='default',
+STYLESHEET['default'] = ParagraphStyle(typeface=GIBSON_TYPEFACE_REGULAR,
+                                               font_size=12 * PT,
+                                               space_below=6 * PT)
+STYLESHEET['default-light'] = ParagraphStyle(typeface=GIBSON_TYPEFACE_LIGHT,
+                                             font_size=12 * PT,
+                                             space_below=6 * PT)
+
+STYLESHEET['artist_name'] = ParagraphStyle(base='default-light',
                                            font_size=14 * PT)
 STYLESHEET['title'] = ParagraphStyle(base='default',
                                      font_weight=BOLD,
                                      font_size=18 * PT,
                                      space_below=10 * PT)
-STYLESHEET['year'] = ParagraphStyle(base='default',
+
+STYLESHEET['year'] = ParagraphStyle(base='default-light',
                                     space_below=10 * PT)
 STYLESHEET['field list'] = GroupedFlowablesStyle(space_below=15 * PT)
 STYLESHEET['section title'] = ParagraphStyle(base='default',
@@ -132,13 +141,13 @@ STYLESHEET['section title'] = ParagraphStyle(base='default',
 STYLESHEET['footer title'] = ParagraphStyle(base='section title',
                                             font_size=14 * PT,
                                             space_below=5 * PT)
-STYLESHEET['footer label'] = ParagraphStyle(base='default',
+STYLESHEET['footer label'] = ParagraphStyle(base='default-light',
                                             font_size=10 * PT,
                                             space_above=1 * PT,
-                                            font_color=HexColor("#444444"))
+                                            font_color=ASCRIBE_BLACK)
 STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
                                               font_weight=BOLD,
-                                              font_color=HexColor("#48DACB"))
+                                              font_color=HexColor("003C69"))
 STYLESHEET['image'] = HorizontallyAlignedFlowableStyle(horizontal_align=CENTER)
 
 
@@ -157,8 +166,8 @@ class AscribePage(Page):
                          body_width, body_height)
 
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
-        logotype = SingleStyledText('\ue603', style='logotype')
-        self.header << Paragraph('ascribe ' + logotype, style='logo')
+        logotype = SingleStyledText('\ue808', style='logotype')
+        self.header << Paragraph(logotype, style='logo')
         # self.header << Paragraph(logotype, style='logo')
 
         self.column1 = Container('column1', body, 0 * PT, self.header.bottom,
@@ -178,10 +187,10 @@ class AscribePage(Page):
                                                 style=STYLESHEET['footer content'])))
         fields.append(LabeledFlowable(Paragraph('Signature:'),
                                       Paragraph(self._signature(document),
-                                                style=ParagraphStyle(base='footer content', typeface=nimbus_mono))))
+                                                style=ParagraphStyle(base='footer content', typeface=GIBSON_TYPEFACE_REGULAR))))
         self.footer << FieldList(fields, style='footer fieldlist')
-        verify_link = AnnotatedText('go to ascribe.io/verify to verify',
-                                    annotation=HyperLink('https://www.ascribe.io/verify'))
+        verify_link = AnnotatedText('go to ascribe.io/app/coa_verify to verify',
+                                    annotation=HyperLink('https://www.ascribe.io/app/coa_verify'))
         self.footer << Paragraph(verify_link, style=STYLESHEET['footer label'])
 
     def _signature(self, document):
