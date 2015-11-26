@@ -22,7 +22,7 @@ from rinoh.paragraph import Paragraph
 from rinoh.structure import FieldList, LabeledFlowable
 from rinoh.styles import ParagraphStyle
 from rinoh.annotation import AnnotatedText, HyperLink
-from rinoh.float import Image
+from rinoh.float import Image, FIT
 
 from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
 from rinoh.color import HexColor
@@ -168,14 +168,6 @@ class AscribePage(Page):
         logotype = SingleStyledText('\ue808', style='logotype')
         self.header << Paragraph(logotype, style='logo')
         # self.header << Paragraph(logotype, style='logo')
-
-        self.column1 = FlowablesContainer('column1', body, 0 * PT, self.header.bottom,
-                                 width=self.left_column_width)
-        self.column1 << document.image
-        self.column2 = ChainedContainer('column2', body, chain,
-                                        self.left_column_width + self.column_spacing,
-                                        self.header.bottom)
-
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
 
         self.footer << Paragraph('Cryptographic Signature', style='footer title')
@@ -190,6 +182,17 @@ class AscribePage(Page):
         verify_link = AnnotatedText('go to ascribe.io/app/coa_verify to verify',
                                     annotation=HyperLink('https://www.ascribe.io/app/coa_verify'))
         self.footer << Paragraph(verify_link, style=STYLESHEET['footer label'])
+        self.column1 = FlowablesContainer('column1', body, 0 * PT,
+                                          top=self.header.bottom,
+                                          bottom=self.footer.top - 20*PT,
+                                          width=self.left_column_width)
+        self.column1 << document.image
+        self.column2 = ChainedContainer('column2', body, chain,
+                                        left=self.left_column_width
+                                             + self.column_spacing,
+                                        top=self.header.bottom,
+                                        bottom=self.footer.top - 20*PT)
+
 
     def _signature(self, document):
         # TODO: auto-wrap
@@ -225,7 +228,7 @@ class AscribeCertificate(DocumentTemplate):
         thumbnail = requests.get(data['thumbnail'])
         image_data = BytesIO(thumbnail.content)
         image_data.seek(0)
-        self.image = Image(image_data, width=100 * PERCENT)
+        self.image = Image(image_data, scale=FIT)
         content = []
         content.append(Paragraph(data['title'], style='title'))
 
