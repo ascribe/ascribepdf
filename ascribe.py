@@ -1,5 +1,4 @@
 from io import BytesIO
-from time import strptime, strftime
 import requests
 import os
 
@@ -7,15 +6,15 @@ import json
 
 from PIL import Image as PILImage
 
-# pip install git+https://github.com/brechtm/rinohtype.git@ascribe
 from rinoh.font import TypeFace, ITALIC
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM, LIGHT
 from rinoh.font.type1 import Type1Font
 
-from rinoh.layout import Container, DownExpandingContainer, Chain, UpExpandingContainer
+from rinoh.layout import Container, DownExpandingContainer, UpExpandingContainer
+from rinoh.layout import FlowablesContainer, ChainedContainer
 from rinoh.dimension import CM, PT, PERCENT
-from rinoh.document import Document, Page, LANDSCAPE
+from rinoh.document import DocumentSection, Page, LANDSCAPE
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher
 from rinoh.backend import pdf
@@ -28,11 +27,9 @@ from rinoh.annotation import AnnotatedText, HyperLink
 from rinoh.float import Image
 
 from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
-from rinoh.draw import HexColor
+from rinoh.color import HexColor
 
-from rinohlib.fonts.texgyre.pagella import typeface as pagella
-from rinohlib.fonts.texgyre.cursor import typeface as cursor
-# from rinoh.fonts.adobe14 import times, courier, helvetica
+from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOptions
 
 from flask import Flask, request, send_file
 
@@ -159,8 +156,11 @@ class AscribePage(Page):
     left_column_width = 10 * CM
     column_spacing = 1 * CM
 
-    def __init__(self, document):
-        super().__init__(document, A4, LANDSCAPE)
+    def __init__(self, document_part, chain):
+        document = document_part.document
+        paper = document.options['page_size']
+        orientation = document.options['page_orientation']
+        super().__init__(document_part, paper, orientation)
         body_width = self.width - (self.leftmargin + self.rightmargin)
         body_height = self.height - (self.topmargin + self.bottommargin)
         body = Container('body', self, self.leftmargin, self.topmargin,
@@ -171,13 +171,12 @@ class AscribePage(Page):
         self.header << Paragraph(logotype, style='logo')
         # self.header << Paragraph(logotype, style='logo')
 
-        self.column1 = Container('column1', body, 0 * PT, self.header.bottom,
-                                 width=self.left_column_width,
-                                 chain=document.image)
-        self.column2 = Container('column2', body,
-                                 self.left_column_width + self.column_spacing,
-                                 self.header.bottom,
-                                 chain=document.text)
+        self.column1 = FlowablesContainer('column1', body, 0 * PT, self.header.bottom,
+                                 width=self.left_column_width)
+        self.column1 << document.image
+        self.column2 = ChainedContainer('column2', body, chain,
+                                        self.left_column_width + self.column_spacing,
+                                        self.header.bottom)
 
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
 
@@ -201,12 +200,29 @@ class AscribePage(Page):
         return " ".join([signature[i:i + n] for i in range(0, len(signature), n)])
 
 
-class AscribeCertificate(Document):
-    namespace = 'http://www.mos6581.org/ns/rficpaper'
+
+
+class AscribeCertificatePart(ContentsPart):
+    end_at = None
+
+    def new_page(self, chains):
+        chain, = chains
+        return AscribePage(self, chain)
+
+
+class AscribeCertificateSection(DocumentSection):
+    parts = [AscribeCertificatePart]
+
+
+OPTIONS = DocumentOptions(stylesheet=STYLESHEET,
+                          page_size=A4, page_orientation=LANDSCAPE)
+
+
+class AscribeCertificate(DocumentTemplate):
+    sections = [AscribeCertificateSection]
 
     def __init__(self, data):
         title = ' - '.join((data['artist_name'], data['title']))
-        super().__init__(STYLESHEET, backend=pdf, title=title)
         self.data = data
         image_data = BytesIO()
         r = requests.get(data['thumbnail'])
@@ -219,7 +235,6 @@ class AscribeCertificate(Document):
             background = PILImage.new('RGBA', foreground.size, (255, 255, 255, 255))
             input_image = PILImage.alpha_composite(background, foreground)
         input_image.convert('RGB').save(image_data, 'PDF')  # , **pilim.info) #, Quality=100)
-        self.image = Chain(self)
         (_width, _height) = input_image.size
         print('width: %d' % _width)
         print('length: %d' % _height)
@@ -229,48 +244,61 @@ class AscribeCertificate(Document):
         else:
             width_pct = 100
         print('width_pct: %d' % width_pct)
-        self.image << Image(image_data, width=width_pct * PERCENT)
-        self.text = Chain(self)
-        self.text << Paragraph(data['title'], style='title')
+        self.image = Image(image_data, width=width_pct * PERCENT)
+        content = []
+        content.append(Paragraph(data['title'], style='title'))
 
         edition = data['yearAndEdition_str'].split(',')[1].rstrip()
-        self.text << LabeledFlowable(Paragraph('Edition: ', style='year'),
-                                     Paragraph(edition, style='year'))
-
-        self.text << LabeledFlowable(Paragraph('Created by: ', style='year'),
-                                     Paragraph(data['artist_name'], style='year'))
-
-        self.text << LabeledFlowable(Paragraph('Owner: ', style='year'), Paragraph(data['owner'], style='year'))
+        content.append(LabeledFlowable(Paragraph('Edition: ', style='year'),
+                                       Paragraph(edition, style='year')))
+        content.append(LabeledFlowable(Paragraph('Created by: ', style='year'),
+                                       Paragraph(data['artist_name'], style='year')))
+        content.append(LabeledFlowable(Paragraph('Owner: ', style='year'),
+                                       Paragraph(data['owner'], style='year')))
 
         if 'bitcoin_ID_noPrefix' in data.keys():
             bitcoin_id = data['bitcoin_ID_noPrefix']
         else:
             bitcoin_id = data['bitcoin_id']
 
-        self.text << Paragraph('Artwork Details:', style='section title')
+        content.append(Paragraph('Artwork Details:', style='section title'))
 
-        self.text << LabeledFlowable(Paragraph('Artwork ID: ', style='year'), Paragraph(bitcoin_id, style='year'))
-
-        self.text << LabeledFlowable(Paragraph('Filetype: ', style='year'),
-                                     Paragraph(data['digital_work']['mime'], style='year'))
+        content.append(LabeledFlowable(Paragraph('Artwork ID: ', style='year'),
+                                       Paragraph(bitcoin_id, style='year')))
+        content.append(LabeledFlowable(Paragraph('Filetype: ', style='year'),
+                                       Paragraph(data['digital_work']['mime'], style='year')))
 
         if 'ownershipHistory' in data.keys():
             history = data['ownershipHistory']
         else:
             history = data['ownership_history']
-        self.text << Paragraph('Provenance/Ownership History', style='section title')
-        self._history(history, 'ownership ascribed to')
-
-
+        content.append(Paragraph('Provenance/Ownership History', style='section title'))
+        for flowable in self._history(history, 'ownership ascribed to'):
+            content.append(flowable)
+        super().__init__(content, options=OPTIONS, backend=pdf)
         # self.text << Paragraph(data['crypto_signature'])
 
     def _history(self, items, action):
         for dtime_str, name in items:
-            self.text << Paragraph(dtime_str + ' - ' + name, style='year')
+            yield Paragraph(dtime_str + ' - ' + name, style='year')
 
     def setup(self):
         page = AscribePage(self)
         self.add_page(page, 1)
+
+
+def render_and_send_certificate(data):
+    certificate = AscribeCertificate(data)
+    pdf_file = BytesIO()
+    print('Start pdf rendering')
+    certificate.render(file=pdf_file)
+    print('Render complete')
+    pdf_file.seek(0)
+    response = send_file(pdf_file,
+                         attachment_filename='certificate.pdf',
+                         mimetype='application/pdf')
+    response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+    return response
 
 
 @app.route('/', methods=['POST'])
@@ -281,16 +309,7 @@ def certificate():
     data = json.loads(json_data)
     print(data)
     try:
-        certificate = AscribeCertificate(data)
-        print('Start pdf rendering')
-        pdf_file = certificate.render()
-        print('Render complete')
-        # pdf_file = certificate.render('/home/dimi/coa.pdf')
-        response = send_file(pdf_file,
-                             attachment_filename='certificate.pdf',
-                             mimetype='application/pdf')
-        response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
-        return response
+        return render_and_send_certificate(data)
     except Exception as e:
         print('Error: ' + str(e))
         pass
@@ -299,17 +318,7 @@ def certificate():
 @app.route('/', methods=['GET'])
 def test():
     try:
-        # json_data = json.dumps(data_faulty)
-        json_data = json.dumps(data_test)
-        data = json.loads(json_data)
-        certificate = AscribeCertificate(data)
-        pdf_file = certificate.render()
-        # pdf_file = certificate.render('/home/dimi/coa.pdf')
-        response = send_file(pdf_file,
-                             attachment_filename='certificate.pdf',
-                             mimetype='application/pdf')
-        response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
-        return response
+        return render_and_send_certificate(data_test)
     except Exception as e:
         print('Error: ' + str(e))
         pass
