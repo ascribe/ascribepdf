@@ -4,8 +4,6 @@ import os
 
 import json
 
-from PIL import Image as PILImage
-
 from rinoh.font import TypeFace, ITALIC
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM, LIGHT
@@ -224,27 +222,10 @@ class AscribeCertificate(DocumentTemplate):
     def __init__(self, data):
         title = ' - '.join((data['artist_name'], data['title']))
         self.data = data
-        image_data = BytesIO()
-        r = requests.get(data['thumbnail'])
-        buff = BytesIO(r.content)
-        buff.seek(0)
-        input_image = PILImage.open(buff)
-        if 'transparency' in input_image.info:
-            print('TRANSP')
-            foreground = input_image.convert('RGBA')
-            background = PILImage.new('RGBA', foreground.size, (255, 255, 255, 255))
-            input_image = PILImage.alpha_composite(background, foreground)
-        input_image.convert('RGB').save(image_data, 'PDF')  # , **pilim.info) #, Quality=100)
-        (_width, _height) = input_image.size
-        print('width: %d' % _width)
-        print('length: %d' % _height)
-        aspect_ratio = _width / _height
-        if aspect_ratio < MIN_THUMB_ASPECT:
-            width_pct = aspect_ratio / MIN_THUMB_ASPECT * 100
-        else:
-            width_pct = 100
-        print('width_pct: %d' % width_pct)
-        self.image = Image(image_data, width=width_pct * PERCENT)
+        thumbnail = requests.get(data['thumbnail'])
+        image_data = BytesIO(thumbnail.content)
+        image_data.seek(0)
+        self.image = Image(image_data, width=100 * PERCENT)
         content = []
         content.append(Paragraph(data['title'], style='title'))
 
