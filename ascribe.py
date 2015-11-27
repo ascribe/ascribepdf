@@ -290,8 +290,8 @@ class AscribeCertificate(DocumentTemplate):
         page = AscribePage(self)
         self.add_page(page, 1)
 
-
 def render_certificate(data, to_file=False):
+    data['crypto_signature'] = '\N{ZERO WIDTH SPACE}'.join(data['crypto_signature'])
     certificate = AscribeCertificate(data)
     print('Start pdf rendering')
     if to_file:
