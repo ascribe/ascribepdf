@@ -11,21 +11,23 @@ from rinoh.font.type1 import Type1Font
 
 from rinoh.layout import Container, DownExpandingContainer, UpExpandingContainer
 from rinoh.layout import FlowablesContainer, ChainedContainer
-from rinoh.dimension import CM, PT, PERCENT
-from rinoh.document import DocumentSection, Page, LANDSCAPE
+from rinoh.dimension import DimensionUnit, CM, PT, INCH
+from rinoh.document import DocumentSection, Page, PORTRAIT
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher
 from rinoh.backend import pdf
 from rinoh.flowable import (GroupedFlowablesStyle, GroupedFlowables,
                             HorizontallyAlignedFlowableStyle, CENTER)
 from rinoh.paragraph import Paragraph
-from rinoh.structure import FieldList, LabeledFlowable
+from rinoh.structure import FieldList, LabeledFlowable, HorizontalRule
 from rinoh.styles import ParagraphStyle
 from rinoh.annotation import AnnotatedText, HyperLink
 from rinoh.float import Image, FIT
 
 from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
 from rinoh.color import HexColor
+
+from rinoh.frontend.rst import ReStructuredTextParser
 
 from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOptions
 
@@ -59,7 +61,10 @@ data_faulty = {'yearAndEdition_str': '111, 1/12', 'bitcoin_id': '1LaemJEou4pYLDC
                                 'id': 2310, 'isEncoding': 0}, 'title': '1 long',
                'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F4998038c-3ea0-4502-9a3a-4e2ae6c761f2%2Fthumbnail%2F600x600%2Fthumbnail.png',
                'crypto_signature': '65312234EDEFE06054DCDEE309ED3EDDAE91CC7D542D5F7085CB40F0CA24A24642787AF8C798BE4AD122E6A40E7BE9D0B44AA75CB5D839133098D49D4E1A4AB5BE9CF7262089258460E2C61B3C810DBCA053F3844A93022A33037661414219B84CAFB5E0CB19C2688AA8C2134FDF69AE9C49714EE4E039A8D342D6F8D276A4BDL'}
-MIN_THUMB_ASPECT = 0.9
+
+
+with open('template.rst') as file:
+    TEMPLATE = ReStructuredTextParser().parse(file)
 
 DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
 
@@ -82,16 +87,6 @@ MATCHER['footer label'] = FieldList.like('footer fieldlist') / LabeledFlowable /
 MATCHER['footer content'] = FieldList.like('footer fieldlist') / LabeledFlowable / GroupedFlowables / Paragraph
 
 PATH = os.path.dirname(os.path.realpath(__file__))
-times_regular = Type1Font(PATH + '/fonts/n021003l', weight=REGULAR)
-times_italic = Type1Font(PATH + '/fonts/n021023l', weight=REGULAR, slant=ITALIC)
-times_bold = Type1Font(PATH + '/fonts/n021004l', weight=BOLD)
-times_bold_italic = Type1Font(PATH + '/fonts/n021024l', weight=BOLD, slant=ITALIC)
-
-times = TypeFace('URW Times', times_regular, times_italic, times_bold, times_bold_italic)
-
-nimbus_medium = Type1Font(PATH + '/fonts/n022003l', weight=MEDIUM)
-nimbus_bold = Type1Font(PATH + '/fonts/n022004l', weight=BOLD)
-nimbus_mono = TypeFace('URW Nimbus', nimbus_medium, nimbus_bold)
 
 MERCURY_TYPEFACE = TypeFace('Mercury', Type1Font(PATH + '/fonts/mercurymedium', weight=MEDIUM))
 GIBSON_TYPEFACE_REGULAR = TypeFace('Gibson-Regular', OpenTypeFont(PATH + '/fonts/Gibson-Regular.ttf', weight=REGULAR))
@@ -101,6 +96,8 @@ ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont(PATH + '/fonts/ascribe.ttf',
 ASCRIBE_NEW_TYPEFACE = TypeFace('ascribe-new', OpenTypeFont(PATH + '/fonts/ascribe-logo.ttf', weight=REGULAR))
 ASCRIBE_GREEN = HexColor('003C69')
 ASCRIBE_BLACK = HexColor('1E1E1E')
+
+PX = DimensionUnit(1 / 96 * INCH)
 
 STYLESHEET = StyleSheet('ascribe', matcher=MATCHER)
 STYLESHEET['logo'] = ParagraphStyle(typeface=MERCURY_TYPEFACE,
@@ -147,60 +144,59 @@ STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
 STYLESHEET['image'] = HorizontallyAlignedFlowableStyle(horizontal_align=CENTER)
 
 
+class TitleFlowables(GroupedFlowables):
+    def flowables(self, document):
+        meta = document.metadata
+        yield Paragraph(meta['title'], style='title')
+        yield meta['owner']
+        yield meta['verify']
+        yield HorizontalRule()
+
+
+class ArtworkFlowables(GroupedFlowables):
+    def flowables(self, document):
+        yield document.image
+
+
+class FooterFlowables(GroupedFlowables):
+    def flowables(self, document):
+        yield document.metadata['footer']
+
+
 class AscribePage(Page):
-    topmargin = 2 * CM
+    topmargin = 22 * PX
     bottommargin = 1 * CM
-    leftmargin = rightmargin = 2 * CM
-    left_column_width = 10 * CM
-    column_spacing = 1 * CM
+    leftmargin = rightmargin = 40 * PX
+    padding = 40 * PX
+    column_spacing = padding
+    split_ratio = 50 # (%) artwork - meta
 
     def __init__(self, document_part, chain):
-        document = document_part.document
-        paper = document.options['page_size']
-        orientation = document.options['page_orientation']
-        super().__init__(document_part, paper, orientation)
+        options = document_part.document.options
+        super().__init__(document_part,
+                         options['page_size'], options['page_orientation'])
         body_width = self.width - (self.leftmargin + self.rightmargin)
         body_height = self.height - (self.topmargin + self.bottommargin)
         body = Container('body', self, self.leftmargin, self.topmargin,
                          body_width, body_height)
 
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
-        logotype = SingleStyledText('\ue808', style='logotype')
-        self.header << Paragraph(logotype, style='logo')
-        # self.header << Paragraph(logotype, style='logo')
+        self.header << TitleFlowables()
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
+        self.footer << FooterFlowables()
 
-        self.footer << Paragraph('Cryptographic Signature', style='footer title')
-        fields = []
-        fields.append(LabeledFlowable(Paragraph('Message:'),
-                                      Paragraph(document.data['crypto_message'],
-                                                style=STYLESHEET['footer content'])))
-        fields.append(LabeledFlowable(Paragraph('Signature:'),
-                                      Paragraph(self._signature(document),
-                                                style=ParagraphStyle(base='footer content', typeface=GIBSON_TYPEFACE_REGULAR))))
-        self.footer << FieldList(fields, style='footer fieldlist')
-        verify_link = AnnotatedText('go to ascribe.io/app/coa_verify to verify',
-                                    annotation=HyperLink('https://www.ascribe.io/app/coa_verify'))
-        self.footer << Paragraph(verify_link, style=STYLESHEET['footer label'])
+        column_width = (body_width - self.column_spacing) * (self.split_ratio / 100)
         self.column1 = FlowablesContainer('column1', body, 0 * PT,
-                                          top=self.header.bottom,
+                                          top=self.header.bottom
+                                              + self.padding,
                                           bottom=self.footer.top - 20*PT,
-                                          width=self.left_column_width)
-        self.column1 << document.image
+                                          width=column_width)
+        self.column1 << ArtworkFlowables()
         self.column2 = ChainedContainer('column2', body, chain,
-                                        left=self.left_column_width
-                                             + self.column_spacing,
-                                        top=self.header.bottom,
+                                        left=column_width + self.column_spacing,
+                                        top=self.header.bottom
+                                            + self.padding,
                                         bottom=self.footer.top - 20*PT)
-
-
-    def _signature(self, document):
-        # TODO: auto-wrap
-        signature = str(document.data['crypto_signature'])
-        n = 110
-        return " ".join([signature[i:i + n] for i in range(0, len(signature), n)])
-
-
 
 
 class AscribeCertificatePart(ContentsPart):
@@ -216,55 +212,19 @@ class AscribeCertificateSection(DocumentSection):
 
 
 OPTIONS = DocumentOptions(stylesheet=STYLESHEET,
-                          page_size=A4, page_orientation=LANDSCAPE)
+                          page_size=A4, page_orientation=PORTRAIT)
 
 
 class AscribeCertificate(DocumentTemplate):
     sections = [AscribeCertificateSection]
 
     def __init__(self, data):
-        title = ' - '.join((data['artist_name'], data['title']))
         self.data = data
         thumbnail = requests.get(data['thumbnail'])
         image_data = BytesIO(thumbnail.content)
         image_data.seek(0)
         self.image = Image(image_data, scale=FIT)
-        content = []
-        content.append(Paragraph(data['title'], style='title'))
-
-        edition = data['yearAndEdition_str'].split(',')[1].rstrip()
-        content.append(LabeledFlowable(Paragraph('Edition: ', style='year'),
-                                       Paragraph(edition, style='year')))
-        content.append(LabeledFlowable(Paragraph('Created by: ', style='year'),
-                                       Paragraph(data['artist_name'], style='year')))
-        content.append(LabeledFlowable(Paragraph('Owner: ', style='year'),
-                                       Paragraph(data['owner'], style='year')))
-
-        if 'bitcoin_ID_noPrefix' in data.keys():
-            bitcoin_id = data['bitcoin_ID_noPrefix']
-        else:
-            bitcoin_id = data['bitcoin_id']
-
-        content.append(Paragraph('Artwork Details:', style='section title'))
-
-        content.append(LabeledFlowable(Paragraph('Artwork ID: ', style='year'),
-                                       Paragraph(bitcoin_id, style='year')))
-        content.append(LabeledFlowable(Paragraph('Filetype: ', style='year'),
-                                       Paragraph(data['digital_work']['mime'], style='year')))
-
-        if 'ownershipHistory' in data.keys():
-            history = data['ownershipHistory']
-        else:
-            history = data['ownership_history']
-        content.append(Paragraph('Provenance/Ownership History', style='section title'))
-        for flowable in self._history(history, 'ownership ascribed to'):
-            content.append(flowable)
-        super().__init__(content, options=OPTIONS, backend=pdf)
-        # self.text << Paragraph(data['crypto_signature'])
-
-    def _history(self, items, action):
-        for dtime_str, name in items:
-            yield Paragraph(dtime_str + ' - ' + name, style='year')
+        super().__init__(TEMPLATE, options=OPTIONS, backend=pdf)
 
     def setup(self):
         page = AscribePage(self)
