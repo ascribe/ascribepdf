@@ -4,25 +4,24 @@ import os
 
 import json
 
-from rinoh.font import TypeFace, ITALIC
+from rinoh.font import TypeFace
 from rinoh.font.opentype import OpenTypeFont
-from rinoh.font.style import REGULAR, MEDIUM, LIGHT
+from rinoh.font.style import REGULAR, LIGHT
 
 from rinoh.layout import Container, DownExpandingContainer, UpExpandingContainer
 from rinoh.layout import FlowablesContainer, ChainedContainer
-from rinoh.dimension import DimensionUnit, CM, PT, INCH
+from rinoh.dimension import DimensionUnit, PT, INCH, CM
 from rinoh.document import DocumentSection, Page, PORTRAIT
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher, Var
 from rinoh.backend import pdf
-from rinoh.flowable import (GroupedFlowablesStyle, GroupedFlowables,
-                            HorizontallyAlignedFlowableStyle, CENTER)
+from rinoh.flowable import GroupedFlowables, CENTER
 from rinoh.paragraph import Paragraph, LEFT, SINGLE
-from rinoh.structure import FieldList, LabeledFlowable, HorizontalRule, ListItem
+from rinoh.structure import LabeledFlowable, HorizontalRule, ListItem
 from rinoh.styles import ParagraphStyle
 from rinoh.float import Image, FIT
 
-from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
+from rinoh.text import StyledText
 from rinoh.color import HexColor
 
 from rinoh.frontend.rst import ReStructuredTextParser
