@@ -15,7 +15,7 @@ from rinoh.document import DocumentSection, Page, PORTRAIT
 from rinoh.paper import A4
 from rinoh.style import StyleSheet, StyledMatcher, Var
 from rinoh.backend import pdf
-from rinoh.flowable import GroupedFlowables, CENTER
+from rinoh.flowable import GroupedFlowables, CENTER, RIGHT
 from rinoh.paragraph import Paragraph, LEFT, SINGLE
 from rinoh.structure import LabeledFlowable, HorizontalRule, ListItem
 from rinoh.styles import ParagraphStyle
@@ -84,6 +84,8 @@ MATCHER['header paragraph'] = header / ... / Paragraph
 MATCHER['header verify'] = header / ...  / Paragraph.like(classes=['verify'])
 MATCHER['header rule'] = header / HorizontalRule
 
+MATCHER['QR image'] = Image.like('QR code')
+
 MATCHER['footer paragraph'] = footer / ... / Paragraph
 MATCHER['logo'] = StyledText.like(classes=['logofont'])
 
@@ -136,6 +138,9 @@ STYLESHEET('header paragraph',
 STYLESHEET('header verify',
            base='header paragraph',
            font_color=Var('blue'))
+
+STYLESHEET('QR image',
+           horizontal_align=RIGHT)
 
 STYLESHEET('bulleted list',
            ordered=False,
@@ -207,6 +212,11 @@ class HeaderFlowables(GroupedFlowables):
         yield HorizontalRule()
 
 
+class QRFlowables(GroupedFlowables):
+    def flowables(self, document):
+        yield Image('qrcode.png', scale=FIT, style='QR code')
+
+
 class FooterFlowables(GroupedFlowables):
     def __init__(self):
         super().__init__(style='footer')
@@ -239,6 +249,10 @@ class AscribePage(Page):
 
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
         self.header << HeaderFlowables()
+        self.qrcode = FlowablesContainer('qr', body, top=0, right=body_width,
+                                         width=3*CM,
+                                         height=self.header.height - 10*PT)
+        self.qrcode << QRFlowables()
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
         self.footer << FooterFlowables()
 
