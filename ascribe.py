@@ -1,4 +1,4 @@
-from io import BytesIO
+from io import BytesIO, StringIO
 import requests
 import os
 
@@ -31,42 +31,35 @@ from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOpti
 from rinohlib.stylesheets.matcher import matcher
 
 from flask import Flask, request, send_file
+from jinja2 import Environment, PackageLoader
 
 app = Flask(__name__)
 
+PATH = os.path.dirname(os.path.realpath(__file__))
+FONT_PATH = os.path.join(PATH, 'fonts')
+
+jinja_env = Environment(loader=PackageLoader(__name__, '.'))
+
+TEMPLATE = jinja_env.get_template('template.rst')
 
 # sample JSON input
-data_test = {'digital_work': {'hash': '08efe77013e52d0a372e7bb611d982c9', 'mime': 'image', 'isEncoding': 0,
-                              'encoding_urls': None,
-                              'url_safe': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2Fe65f70f5-1201-4f92-bc9c-f1ce5ac40025%2Fdigitalwork%2Fe65f70f5-1201-4f92-bc9c-f1ce5ac40025.jpg',
-                              'url': 'https://d1qjsxua1o9x03.cloudfront.net/local/b6d767d2f8ed5d21a44b0e5886680cb9/e65f70f5-1201-4f92-bc9c-f1ce5ac40025/digitalwork/e65f70f5-1201-4f92-bc9c-f1ce5ac40025.jpg',
-                              'id': 2309},
-             'ownership_history': [['Jul. 21, 2015, 21:07:59', 'Registered by Schweinehund']],
-             'bitcoin_id': '1ECqK66oqyJguVuuJfyoSdsdnsc6kFZKQ7',
+data_test = {'owner_timestamp': 'October 27, 2015 17:36:00 GMT',
+             'verify_owner_url': 'http://www.ascribe.io/verify/ax43',
              'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2Fe65f70f5-1201-4f92-bc9c-f1ce5ac40025%2Fthumbnail%2F600x600%2Fthumbnail.png',
-             'num_editions': 12, 'edition_number': 7, 'owner': 'Schweinehund',
+             'title': 'Life is Ephemeral',
+             'num_editions': 10,
+             'edition_number': 1,
+             'artist_name': 'Ham Burger',
+             'owner': 'Thom Stevens',
+             'bitcoin_id': '1ECqK66oqyJguVuuJfyoSdsdnsc6kFZKQ7',
+             'filename': 'filename.zip',
+             'filesize': '54.231 MB',
+             'ownership_history': [['Aug. 24, 2015, 13:05:31', 'Registered by Tom Stevens'],
+                                   ['Sep 12, 2015, 13:05:31', 'Transferred to bruce@gmail.com']],
+             'check_stamp_url': 'http://www.ascribe.io/check-stamp/3212DFSDF2',
              'crypto_signature': 'AA59A221B5DFADC1BA5B976226A34BEFFDFCF29A8631817C63B0B1063C159A76590E0D15E63A909B701FF33CBFD4B7193689CA39CB27EA84CB79E5744589923DE9A9C91237D7C0C79A11ED1A3E60E1E15357D188A248DBED9E2818F6E60FB3F947C2F28B65C7D4B337716CB735BBCA6174942692281172B5EDF5A79D2564733FL',
-             'crypto_message': '1 wide*1 wide*7/12*111*2015Jul21-21:07:59', 'artist_name': '1 wide',
-             'yearAndEdition_str': '111, 7/12', 'title': '1 wide'}
+             'crypto_message': '1 wide*1 wide*7/12*111*2015Jul21-21:07:59'}
 
-data_faulty = {'yearAndEdition_str': '111, 1/12', 'bitcoin_id': '1LaemJEou4pYLDCw3Eot9ZGrBS7gAtJTT4',
-               'artist_name': '1 long', 'owner': 'Schweinehund', 'num_editions': 12,
-               'crypto_message': '1 long*1 long*1/12*111*2015Jul21-21:08:16', 'edition_number': 1,
-               'ownership_history': [['Jul. 21, 2015, 21:08:16', 'Registered by Schweinehund']],
-               'digital_work': {'mime': 'image', 'hash': 'd51eb8656b3cc68545e92746594f6e4c',
-                                'encoding_urls': None,
-                                'url_safe': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F4998038c-3ea0-4502-9a3a-4e2ae6c761f2%2Fdigitalwork%2F4998038c-3ea0-4502-9a3a-4e2ae6c761f2.jpg',
-                                'url': 'https://d1qjsxua1o9x03.cloudfront.net/local/b6d767d2f8ed5d21a44b0e5886680cb9/4998038c-3ea0-4502-9a3a-4e2ae6c761f2/digitalwork/4998038c-3ea0-4502-9a3a-4e2ae6c761f2.jpg',
-                                'id': 2310, 'isEncoding': 0}, 'title': '1 long',
-               'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F4998038c-3ea0-4502-9a3a-4e2ae6c761f2%2Fthumbnail%2F600x600%2Fthumbnail.png',
-               'crypto_signature': '65312234EDEFE06054DCDEE309ED3EDDAE91CC7D542D5F7085CB40F0CA24A24642787AF8C798BE4AD122E6A40E7BE9D0B44AA75CB5D839133098D49D4E1A4AB5BE9CF7262089258460E2C61B3C810DBCA053F3844A93022A33037661414219B84CAFB5E0CB19C2688AA8C2134FDF69AE9C49714EE4E039A8D342D6F8D276A4BDL'}
-
-
-with open('template.rst') as file:
-    TEMPLATE = ReStructuredTextParser().parse(file)
-
-
-FONT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fonts')
 
 def font(filename):
     return os.path.join(FONT_PATH, filename)
@@ -289,20 +282,30 @@ class AscribeCertificate(DocumentTemplate):
         image_data = BytesIO(thumbnail.content)
         image_data.seek(0)
         self.image = Image(image_data, scale=FIT)
-        super().__init__(TEMPLATE, options=OPTIONS, backend=pdf)
+        with StringIO(TEMPLATE.render(**data)) as rst_file:
+             content_flowables = ReStructuredTextParser().parse(rst_file)
+        super().__init__(content_flowables, options=OPTIONS, backend=pdf)
 
     def setup(self):
         page = AscribePage(self)
         self.add_page(page, 1)
 
 
-def render_and_send_certificate(data):
+def render_certificate(data, to_file=False):
     certificate = AscribeCertificate(data)
-    pdf_file = BytesIO()
     print('Start pdf rendering')
-    certificate.render(file=pdf_file)
+    if to_file:
+        certificate.render('test')
+    else:
+        pdf_file = BytesIO()
+        certificate.render(file=pdf_file)
+        pdf_file.seek(0)
+        return pdf_file
     print('Render complete')
-    pdf_file.seek(0)
+
+
+def render_and_send_certificate(data):
+    pdf_file = render_certificate(data)
     response = send_file(pdf_file,
                          attachment_filename='certificate.pdf',
                          mimetype='application/pdf')
@@ -334,4 +337,5 @@ def test():
 
 
 if __name__ == "__main__":
+    # render_certificate(data_test, to_file=True)
     app.run(debug=True)
