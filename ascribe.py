@@ -7,21 +7,19 @@ import json
 from rinoh.font import TypeFace, ITALIC
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, MEDIUM, LIGHT
-from rinoh.font.type1 import Type1Font
 
 from rinoh.layout import Container, DownExpandingContainer, UpExpandingContainer
 from rinoh.layout import FlowablesContainer, ChainedContainer
 from rinoh.dimension import DimensionUnit, CM, PT, INCH
 from rinoh.document import DocumentSection, Page, PORTRAIT
 from rinoh.paper import A4
-from rinoh.style import StyleSheet, StyledMatcher
+from rinoh.style import StyleSheet, StyledMatcher, Var
 from rinoh.backend import pdf
 from rinoh.flowable import (GroupedFlowablesStyle, GroupedFlowables,
                             HorizontallyAlignedFlowableStyle, CENTER)
-from rinoh.paragraph import Paragraph
-from rinoh.structure import FieldList, LabeledFlowable, HorizontalRule
+from rinoh.paragraph import Paragraph, LEFT, SINGLE
+from rinoh.structure import FieldList, LabeledFlowable, HorizontalRule, ListItem
 from rinoh.styles import ParagraphStyle
-from rinoh.annotation import AnnotatedText, HyperLink
 from rinoh.float import Image, FIT
 
 from rinoh.text import BOLD, TextStyle, SingleStyledText, StyledText
@@ -30,6 +28,7 @@ from rinoh.color import HexColor
 from rinoh.frontend.rst import ReStructuredTextParser
 
 from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOptions
+from rinohlib.stylesheets.matcher import matcher
 
 from flask import Flask, request, send_file
 
@@ -66,91 +65,162 @@ data_faulty = {'yearAndEdition_str': '111, 1/12', 'bitcoin_id': '1LaemJEou4pYLDC
 with open('template.rst') as file:
     TEMPLATE = ReStructuredTextParser().parse(file)
 
-DATETIME_IN_FMT = '%Y/%m/%d %H:%M'
 
-DATETIME_OUT_FMT = '%b. %d, %Y, %I:%M %p'
+FONT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fonts')
 
-MATCHER = StyledMatcher()
-MATCHER['logo'] = Paragraph.like('logo')
-MATCHER['logotype'] = StyledText.like('logotype')
+def font(filename):
+    return os.path.join(FONT_PATH, filename)
 
-MATCHER['image'] = Image
 
-MATCHER['default'] = Paragraph
-MATCHER['artist_name'] = Paragraph.like('artist_name')
-MATCHER['title'] = Paragraph.like('title')
-MATCHER['year'] = Paragraph.like('year')
-MATCHER['field list'] = FieldList
-MATCHER['section title'] = Paragraph.like('section title')
-MATCHER['footer title'] = Paragraph.like('footer title')
-MATCHER['footer label'] = FieldList.like('footer fieldlist') / LabeledFlowable / Paragraph
-MATCHER['footer content'] = FieldList.like('footer fieldlist') / LabeledFlowable / GroupedFlowables / Paragraph
-
-PATH = os.path.dirname(os.path.realpath(__file__))
-
-MERCURY_TYPEFACE = TypeFace('Mercury', Type1Font(PATH + '/fonts/mercurymedium', weight=MEDIUM))
-GIBSON_TYPEFACE_REGULAR = TypeFace('Gibson-Regular', OpenTypeFont(PATH + '/fonts/Gibson-Regular.ttf', weight=REGULAR))
-GIBSON_TYPEFACE_LIGHT = TypeFace('Gibson-Light', OpenTypeFont(PATH + '/fonts/Gibson-Light.ttf', weight=LIGHT))
-# MERCURY_TYPEFACE = TypeFace('Mercury', OpenTypeFont('fonts/Mercury_Medium.otf',weight=MEDIUM))
-ASCRIBE_TYPEFACE = TypeFace('ascribe', OpenTypeFont(PATH + '/fonts/ascribe.ttf', weight=REGULAR))
-ASCRIBE_NEW_TYPEFACE = TypeFace('ascribe-new', OpenTypeFont(PATH + '/fonts/ascribe-logo.ttf', weight=REGULAR))
-ASCRIBE_GREEN = HexColor('003C69')
-ASCRIBE_BLACK = HexColor('1E1E1E')
+GIBSON = TypeFace('Gibson',
+                  OpenTypeFont(font('Gibson-Regular.ttf'), weight=REGULAR),
+                  OpenTypeFont(font('Gibson-Light.ttf'), weight=LIGHT))
+ASCRIBE = TypeFace('ascribe-logo',
+                   OpenTypeFont(font('ascribe-logo.ttf'), weight=REGULAR))
 
 PX = DimensionUnit(1 / 96 * INCH)
 
-STYLESHEET = StyleSheet('ascribe', matcher=MATCHER)
-STYLESHEET['logo'] = ParagraphStyle(typeface=MERCURY_TYPEFACE,
-                                    font_size=26 * PT,
-                                    font_color=HexColor('222222'),
-                                    space_below=36 * PT)
-STYLESHEET['logotype'] = TextStyle(typeface=ASCRIBE_NEW_TYPEFACE,
-                                   font_size=23 * PT,
-                                   font_color=ASCRIBE_BLACK)
 
-STYLESHEET['default'] = ParagraphStyle(typeface=GIBSON_TYPEFACE_REGULAR,
-                                               font_size=12 * PT,
-                                               space_below=6 * PT)
-STYLESHEET['default-light'] = ParagraphStyle(typeface=GIBSON_TYPEFACE_LIGHT,
-                                             font_size=12 * PT,
-                                             space_below=6 * PT)
+MATCHER = StyledMatcher()
 
-STYLESHEET['artist_name'] = ParagraphStyle(base='default-light',
-                                           font_size=14 * PT)
-STYLESHEET['title'] = ParagraphStyle(base='default',
-                                     font_weight=BOLD,
-                                     font_size=18 * PT,
-                                     space_below=10 * PT)
+header = GroupedFlowables.like('header')
+footer = GroupedFlowables.like('footer')
+crypto = GroupedFlowables.like(classes=['crypto'])
 
-STYLESHEET['year'] = ParagraphStyle(base='default-light',
-                                    font_size=11 * PT,
-                                    space_below=10 * PT)
-STYLESHEET['field list'] = GroupedFlowablesStyle(space_below=15 * PT)
-STYLESHEET['section title'] = ParagraphStyle(base='default',
-                                             font_weight=BOLD,
-                                             font_size=14 * PT,
-                                             space_above=6 * PT,
-                                             space_below=8 * PT)
-STYLESHEET['footer title'] = ParagraphStyle(base='section title',
-                                            font_size=14 * PT,
-                                            space_below=5 * PT)
-STYLESHEET['footer label'] = ParagraphStyle(base='default-light',
-                                            font_size=10 * PT,
-                                            space_above=1 * PT,
-                                            font_color=ASCRIBE_BLACK)
-STYLESHEET['footer content'] = ParagraphStyle(base='footer label',
-                                              font_weight=BOLD,
-                                              font_color=HexColor("003C69"))
-STYLESHEET['image'] = HorizontallyAlignedFlowableStyle(horizontal_align=CENTER)
+MATCHER['title'] = header / Paragraph.like('title')
+MATCHER['header paragraph'] = header / ... / Paragraph
+MATCHER['header verify'] = header / ...  / Paragraph.like(classes=['verify'])
+MATCHER['header rule'] = header / HorizontalRule
+
+MATCHER['footer paragraph'] = footer / ... / Paragraph
+MATCHER['logo'] = StyledText.like(classes=['logofont'])
+
+MATCHER['list item'] = ListItem
+MATCHER['crypto paragraph'] = crypto / ... / Paragraph
+MATCHER['crypto field paragraph'] = (crypto / ... / LabeledFlowable
+                                    / GroupedFlowables / Paragraph)
 
 
-class TitleFlowables(GroupedFlowables):
+
+base_stylesheet = StyleSheet('base', matcher=matcher)
+STYLESHEET = StyleSheet('ascribe', base=base_stylesheet, matcher=MATCHER)
+
+STYLESHEET.variables['grey'] = HexColor('#747474')
+STYLESHEET.variables['blue'] = HexColor('#68A8DE')
+
+STYLESHEET['default'] = ParagraphStyle(typeface=GIBSON,
+                                       font_weight=LIGHT,
+                                       font_size=9*PT,
+                                       line_spacing=SINGLE,
+                                       indent_first=0*PT,
+                                       space_above=0*PT,
+                                       space_below=0*PT,
+                                       justify=LEFT,
+                                       kerning=True,
+                                       ligatures=True,
+                                       hyphenate=False,
+                                       hyphen_lang='en_US',
+                                       hyphen_chars=4)
+
+STYLESHEET('title',
+           typeface=GIBSON,
+           font_weight=LIGHT,
+           font_size=29*PT,
+           font_color=HexColor('#D8127D'),
+           space_above=0,
+           space_below=8*PT)
+
+STYLESHEET('body',
+           base='default',
+           font_color=Var('grey'),
+           space_above=5*PT,
+           space_below=0*PT)
+
+STYLESHEET('header paragraph',
+           base='body',
+           font_size=9.5*PT,
+           space_above=1*PT)
+
+STYLESHEET('header verify',
+           base='header paragraph',
+           font_color=Var('blue'))
+
+STYLESHEET('bulleted list',
+           ordered=False,
+           bullet='',
+           label_suffix=None)
+
+STYLESHEET('list item',
+           label_spacing=0,
+           label_min_width=0,
+           label_max_width=0)
+
+STYLESHEET('crypto paragraph',
+           base='body',
+           font_size=8*PT,
+           font_color=Var('blue'))
+
+STYLESHEET('crypto field paragraph',
+           base='body',
+           font_size=8*PT,
+           font_color=Var('grey'))
+
+STYLESHEET('heading level 1',
+           typeface=GIBSON,
+           font_weight=LIGHT,
+           font_size=18*PT,
+           font_color=HexColor('#121417'),
+           line_spacing=SINGLE,
+           space_above=0,
+           space_below=4*PT,
+           number_format=None)
+
+STYLESHEET('heading level 2',
+           base='heading level 1',
+           font_weight=REGULAR,
+           font_size=9*PT,
+           space_above=8*PT)
+
+STYLESHEET('image',
+           horizontal_align=CENTER)
+
+STYLESHEET('footer paragraph',
+           base='default',
+           justify=CENTER)
+
+STYLESHEET('logo',
+           typeface=ASCRIBE,
+           font_weight=REGULAR)
+
+STYLESHEET('horizontal rule',
+           stroke_width=1*PX,
+           stroke_color=HexColor('#CECECE'),
+           space_above=8*PT,
+           space_below=0)
+
+STYLESHEET('header rule',
+           stroke_width=1*PX,
+           stroke_color=HexColor('#D6D6D6'),
+           space_above=10*PT,
+           space_below=0)
+
+
+class HeaderFlowables(GroupedFlowables):
+    def __init__(self):
+        super().__init__(style='header')
+
     def flowables(self, document):
-        meta = document.metadata
-        yield Paragraph(meta['title'], style='title')
-        yield meta['owner']
-        yield meta['verify']
+        yield Paragraph(document.metadata['title'], style='title')
+        yield document.metadata['header']
         yield HorizontalRule()
+
+
+class FooterFlowables(GroupedFlowables):
+    def __init__(self):
+        super().__init__(style='footer')
+
+    def flowables(self, document):
+        yield document.metadata['footer']
 
 
 class ArtworkFlowables(GroupedFlowables):
@@ -158,16 +228,11 @@ class ArtworkFlowables(GroupedFlowables):
         yield document.image
 
 
-class FooterFlowables(GroupedFlowables):
-    def flowables(self, document):
-        yield document.metadata['footer']
-
-
 class AscribePage(Page):
-    topmargin = 22 * PX
-    bottommargin = 1 * CM
-    leftmargin = rightmargin = 40 * PX
-    padding = 40 * PX
+    padding = 30 * PX
+    topmargin = padding
+    bottommargin = padding
+    leftmargin = rightmargin = padding
     column_spacing = padding
     split_ratio = 50 # (%) artwork - meta
 
@@ -181,7 +246,7 @@ class AscribePage(Page):
                          body_width, body_height)
 
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
-        self.header << TitleFlowables()
+        self.header << HeaderFlowables()
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
         self.footer << FooterFlowables()
 
