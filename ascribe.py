@@ -1,4 +1,5 @@
 from io import BytesIO, StringIO
+import qrcode
 import requests
 import os
 
@@ -60,6 +61,7 @@ data_test = {'owner_timestamp': 'October 27, 2015 17:36:00 GMT',
              'crypto_message': '1 wide*1 wide*7/12*111*2015Jul21-21:07:59'}
 
 
+
 def font(filename):
     return os.path.join(FONT_PATH, filename)
 
@@ -72,7 +74,6 @@ ASCRIBE = TypeFace('ascribe-logo',
 
 PX = DimensionUnit(1 / 96 * INCH)
 
-
 MATCHER = StyledMatcher()
 
 header = GroupedFlowables.like('header')
@@ -81,7 +82,7 @@ crypto = GroupedFlowables.like(classes=['crypto'])
 
 MATCHER['title'] = header / Paragraph.like('title')
 MATCHER['header paragraph'] = header / ... / Paragraph
-MATCHER['header verify'] = header / ...  / Paragraph.like(classes=['verify'])
+MATCHER['header verify'] = header / ... / Paragraph.like(classes=['verify'])
 MATCHER['header rule'] = header / HorizontalRule
 
 MATCHER['QR image'] = Image.like('QR code')
@@ -92,9 +93,7 @@ MATCHER['logo'] = StyledText.like(classes=['logofont'])
 MATCHER['list item'] = ListItem
 MATCHER['crypto paragraph'] = crypto / ... / Paragraph
 MATCHER['crypto field paragraph'] = (crypto / ... / LabeledFlowable
-                                    / GroupedFlowables / Paragraph)
-
-
+                                     / GroupedFlowables / Paragraph)
 
 base_stylesheet = StyleSheet('base', matcher=matcher)
 STYLESHEET = StyleSheet('ascribe', base=base_stylesheet, matcher=MATCHER)
@@ -104,11 +103,11 @@ STYLESHEET.variables['blue'] = HexColor('#68A8DE')
 
 STYLESHEET['default'] = ParagraphStyle(typeface=GIBSON,
                                        font_weight=LIGHT,
-                                       font_size=9*PT,
+                                       font_size=9 * PT,
                                        line_spacing=SINGLE,
-                                       indent_first=0*PT,
-                                       space_above=0*PT,
-                                       space_below=0*PT,
+                                       indent_first=0 * PT,
+                                       space_above=0 * PT,
+                                       space_below=0 * PT,
                                        justify=LEFT,
                                        kerning=True,
                                        ligatures=True,
@@ -119,21 +118,21 @@ STYLESHEET['default'] = ParagraphStyle(typeface=GIBSON,
 STYLESHEET('title',
            typeface=GIBSON,
            font_weight=LIGHT,
-           font_size=29*PT,
+           font_size=29 * PT,
            font_color=HexColor('#D8127D'),
            space_above=0,
-           space_below=8*PT)
+           space_below=8 * PT)
 
 STYLESHEET('body',
            base='default',
            font_color=Var('grey'),
-           space_above=5*PT,
-           space_below=0*PT)
+           space_above=5 * PT,
+           space_below=0 * PT)
 
 STYLESHEET('header paragraph',
            base='body',
-           font_size=9.5*PT,
-           space_above=1*PT)
+           font_size=9.5 * PT,
+           space_above=1 * PT)
 
 STYLESHEET('header verify',
            base='header paragraph',
@@ -154,29 +153,29 @@ STYLESHEET('list item',
 
 STYLESHEET('crypto paragraph',
            base='body',
-           font_size=8*PT,
+           font_size=8 * PT,
            font_color=Var('blue'))
 
 STYLESHEET('crypto field paragraph',
            base='body',
-           font_size=8*PT,
+           font_size=8 * PT,
            font_color=Var('grey'))
 
 STYLESHEET('heading level 1',
            typeface=GIBSON,
            font_weight=LIGHT,
-           font_size=18*PT,
+           font_size=18 * PT,
            font_color=HexColor('#121417'),
            line_spacing=SINGLE,
            space_above=0,
-           space_below=4*PT,
+           space_below=4 * PT,
            number_format=None)
 
 STYLESHEET('heading level 2',
            base='heading level 1',
            font_weight=REGULAR,
-           font_size=9*PT,
-           space_above=8*PT)
+           font_size=9 * PT,
+           space_above=8 * PT)
 
 STYLESHEET('image',
            horizontal_align=CENTER)
@@ -190,15 +189,15 @@ STYLESHEET('logo',
            font_weight=REGULAR)
 
 STYLESHEET('horizontal rule',
-           stroke_width=1*PX,
+           stroke_width=1 * PX,
            stroke_color=HexColor('#CECECE'),
-           space_above=8*PT,
+           space_above=8 * PT,
            space_below=0)
 
 STYLESHEET('header rule',
-           stroke_width=1*PX,
+           stroke_width=1 * PX,
            stroke_color=HexColor('#D6D6D6'),
-           space_above=10*PT,
+           space_above=10 * PT,
            space_below=0)
 
 
@@ -214,7 +213,12 @@ class HeaderFlowables(GroupedFlowables):
 
 class QRFlowables(GroupedFlowables):
     def flowables(self, document):
-        yield Image('qrcode.png', scale=FIT, style='QR code')
+        img = qrcode.make(document.data['check_stamp_url'])
+        output = BytesIO()
+        img.save(output)
+        output.flush()
+        output.seek(0)
+        yield Image(output, scale=FIT, style='QR code')
 
 
 class FooterFlowables(GroupedFlowables):
@@ -236,7 +240,7 @@ class AscribePage(Page):
     bottommargin = padding
     leftmargin = rightmargin = padding
     column_spacing = padding
-    split_ratio = 50 # (%) artwork - meta
+    split_ratio = 50  # (%) artwork - meta
 
     def __init__(self, document_part, chain):
         options = document_part.document.options
@@ -250,8 +254,8 @@ class AscribePage(Page):
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
         self.header << HeaderFlowables()
         self.qrcode = FlowablesContainer('qr', body, top=0, right=body_width,
-                                         width=3*CM,
-                                         height=self.header.height - 10*PT)
+                                         width=3 * CM,
+                                         height=self.header.height - 10 * PT)
         self.qrcode << QRFlowables()
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
         self.footer << FooterFlowables()
@@ -260,14 +264,14 @@ class AscribePage(Page):
         self.column1 = FlowablesContainer('column1', body, 0 * PT,
                                           top=self.header.bottom
                                               + self.padding,
-                                          bottom=self.footer.top - 20*PT,
+                                          bottom=self.footer.top - 20 * PT,
                                           width=column_width)
         self.column1 << ArtworkFlowables()
         self.column2 = ChainedContainer('column2', body, chain,
                                         left=column_width + self.column_spacing,
                                         top=self.header.bottom
                                             + self.padding,
-                                        bottom=self.footer.top - 20*PT)
+                                        bottom=self.footer.top - 20 * PT)
 
 
 class AscribeCertificatePart(ContentsPart):
@@ -302,6 +306,7 @@ class AscribeCertificate(DocumentTemplate):
     def setup(self):
         page = AscribePage(self)
         self.add_page(page, 1)
+
 
 def render_certificate(data, to_file=False):
     data['crypto_signature'] = '\N{ZERO WIDTH SPACE}'.join(data['crypto_signature'])

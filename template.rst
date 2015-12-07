@@ -30,7 +30,7 @@ ARTWORK DETAILS
 ...............
 
 :Artwork ID\:: {{bitcoin_id}}
-:File\:: {{ filename }} ({{ filesize }})
+:File summary\:: {{ filename }} ({{ filesize bytes}})
 
 --------------------------------------------------------------------------------
 
