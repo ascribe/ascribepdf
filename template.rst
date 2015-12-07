@@ -1,4 +1,4 @@
-Certificate Of Authenticity
+Certificate of Authenticity
 ===========================
 
 :header:
@@ -30,7 +30,8 @@ ARTWORK DETAILS
 ...............
 
 :Artwork ID\:: {{bitcoin_id}}
-:File summary\:: {{ filename }} ({{ filesize bytes}})
+:File Extension\:: {{ filename }}
+:File Size\:: {{ filesize }} bytes
 
 --------------------------------------------------------------------------------
 
