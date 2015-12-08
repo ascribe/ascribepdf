@@ -231,7 +231,10 @@ class FooterFlowables(GroupedFlowables):
 
 class ArtworkFlowables(GroupedFlowables):
     def flowables(self, document):
-        yield document.image
+        thumbnail = requests.get(document.data['thumbnail'])
+        image_data = BytesIO(thumbnail.content)
+        image_data.seek(0)
+        yield Image(image_data, scale=FIT)
 
 
 class AscribePage(Page):
@@ -295,10 +298,6 @@ class AscribeCertificate(DocumentTemplate):
 
     def __init__(self, data):
         self.data = data
-        thumbnail = requests.get(data['thumbnail'])
-        image_data = BytesIO(thumbnail.content)
-        image_data.seek(0)
-        self.image = Image(image_data, scale=FIT)
         with StringIO(TEMPLATE.render(**data)) as rst_file:
              content_flowables = ReStructuredTextParser().parse(rst_file)
         super().__init__(content_flowables, options=OPTIONS, backend=pdf)
@@ -341,7 +340,6 @@ def certificate():
     try:
         return render_and_send_certificate(data)
     except Exception as e:
-        print('Error: ' + str(e))
         pass
 
 
