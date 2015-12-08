@@ -43,23 +43,21 @@ jinja_env = Environment(loader=PackageLoader(__name__, '.'))
 TEMPLATE = jinja_env.get_template('template.rst')
 
 # sample JSON input
-data_test = {'owner_timestamp': 'October 27, 2015 17:36:00 GMT',
-             'verify_owner_url': 'http://www.ascribe.io/verify/ax43',
-             'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/local%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2Fe65f70f5-1201-4f92-bc9c-f1ce5ac40025%2Fthumbnail%2F600x600%2Fthumbnail.png',
-             'title': 'Life is Ephemeral',
-             'num_editions': 10,
-             'edition_number': 1,
-             'artist_name': 'Ham Burger',
-             'owner': 'Thom Stevens',
-             'bitcoin_id': '1ECqK66oqyJguVuuJfyoSdsdnsc6kFZKQ7',
-             'filename': 'filename.zip',
-             'filesize': '54.231 MB',
-             'ownership_history': [['Aug. 24, 2015, 13:05:31', 'Registered by Tom Stevens'],
-                                   ['Sep 12, 2015, 13:05:31', 'Transferred to bruce@gmail.com']],
-             'check_stamp_url': 'http://www.ascribe.io/check-stamp/3212DFSDF2',
-             'crypto_signature': 'AA59A221B5DFADC1BA5B976226A34BEFFDFCF29A8631817C63B0B1063C159A76590E0D15E63A909B701FF33CBFD4B7193689CA39CB27EA84CB79E5744589923DE9A9C91237D7C0C79A11ED1A3E60E1E15357D188A248DBED9E2818F6E60FB3F947C2F28B65C7D4B337716CB735BBCA6174942692281172B5EDF5A79D2564733FL',
-             'crypto_message': '1 wide*1 wide*7/12*111*2015Jul21-21:07:59'}
-
+data_test = {'title': '111111111', 'filesize': 370611, 'edition_number': 10,
+             'check_stamp_query': '?message=1111111111%2A111111111%2A10%2F13%2A2015%2A2015Jul29-16%3A21%3A51&signature=2CEC38ACD51F91D0A38CF85E8092C337CC18C4ADE1E0F86563D28A97C0442F9EF9202E25E95D85BB1BA5AC3FB18E290E51BC9D1A410D065C7EF716168A13C44F7FA1431404367A4934ECCCE3AA0DA6921A908909B0134A10D4CDBD372C53967FD02760B99FDBE21E1DEB64532305351CFB35E0245B26D54682CAF01F359DD0EDL',
+             'owner_timestamp': 'Jul. 29 2015, 16:21:51', 'artist_name': '1111111111',
+             'digital_work': {'isEncoding': 0, 'mime': 'image', 'hash': '16a78cd2bb628fd6fb14582668ed72d7',
+                              'encoding_urls': None, 'id': 2509,
+                              'url_safe': 'https://d1qjsxua1o9x03.cloudfront.net/live%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F589566d5-5452-48ef-a7c9-88f5f4aefb86%2Fdigitalwork%2F589566d5-5452-48ef-a7c9-88f5f4aefb86.png',
+                              'url': 'https://d1qjsxua1o9x03.cloudfront.net/live/b6d767d2f8ed5d21a44b0e5886680cb9/589566d5-5452-48ef-a7c9-88f5f4aefb86/digitalwork/589566d5-5452-48ef-a7c9-88f5f4aefb86.png'},
+             'bitcoin_id': '1FE7GhESMTN5tUS3TSma4CqTtgZVTV9fnR',
+             'thumbnail': 'https://d1qjsxua1o9x03.cloudfront.net/live%2Fb6d767d2f8ed5d21a44b0e5886680cb9%2F589566d5-5452-48ef-a7c9-88f5f4aefb86%2Fthumbnail%2F600x600%2Fthumbnail.png',
+             'owner': 'Schweinehund', 'crypto_message': '1111111111*111111111*10/13*2015*2015Jul29-16:21:51',
+             'crypto_signature': '2CEC38ACD51F91D0A38CF85E8092C337CC18C4ADE1E0F86563D28A97C0442F9EF9202E25E95D85BB1BA5AC3FB18E290E51BC9D1A410D065C7EF716168A13C44F7FA1431404367A4934ECCCE3AA0DA6921A908909B0134A10D4CDBD372C53967FD02760B99FDBE21E1DEB64532305351CFB35E0245B26D54682CAF01F359DD0EDL',
+             'yearAndEdition_str': '2015, 10/13', 'filename': '.png',
+             'check_stamp_url': 'http://localhost.com:3000/coa_verify/?message=1111111111%2A111111111%2A10%2F13%2A2015%2A2015Jul29-16%3A21%3A51&signature=2CEC38ACD51F91D0A38CF85E8092C337CC18C4ADE1E0F86563D28A97C0442F9EF9202E25E95D85BB1BA5AC3FB18E290E51BC9D1A410D065C7EF716168A13C44F7FA1431404367A4934ECCCE3AA0DA6921A908909B0134A10D4CDBD372C53967FD02760B99FDBE21E1DEB64532305351CFB35E0245B26D54682CAF01F359DD0EDL',
+             'ownership_history': [['Jul. 29, 2015, 16:21:51', 'Registered by Schweinehund']], 'num_editions': 13,
+             'verify_owner_url': 'http://localhost.com:3000/coa_verify/'}
 
 
 def font(filename):
@@ -299,7 +297,7 @@ class AscribeCertificate(DocumentTemplate):
     def __init__(self, data):
         self.data = data
         with StringIO(TEMPLATE.render(**data)) as rst_file:
-             content_flowables = ReStructuredTextParser().parse(rst_file)
+            content_flowables = ReStructuredTextParser().parse(rst_file)
         super().__init__(content_flowables, options=OPTIONS, backend=pdf)
 
     def setup(self):
@@ -340,6 +338,7 @@ def certificate():
     try:
         return render_and_send_certificate(data)
     except Exception as e:
+        print(e)
         pass
 
 

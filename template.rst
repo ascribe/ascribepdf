@@ -6,7 +6,7 @@ Certificate of Authenticity
 
     .. class:: verify
 
-    To verify current owner, please visit {{ verify_owner_url }}
+    To verify current owner, please visit `{{ verify_owner_url }} <{{ check_stamp_url }}>`__
 
 
 :footer:
@@ -23,6 +23,8 @@ Certificate of Authenticity
 :Edition\:: {{ edition_number }}/{{ num_editions }}
 :Created by\:: {{ artist_name }}
 :Owner\:: {{ owner }}
+
+
 
 --------------------------------------------------------------------------------
 
@@ -49,8 +51,8 @@ CRYPTOGRAPHIC STAMP
 
 .. container:: crypto
 
-    Use the summary and signature below to authenticate this certificate:
-    {{ check_stamp_url }}
+    Use the summary and signature below to authenticate this certificate on:
 
+    :Link\:: `{{ verify_owner_url }} <{{ check_stamp_url }}>`__
     :Summary\:: {{ crypto_message }}
     :Signature\:: {{ crypto_signature }}
