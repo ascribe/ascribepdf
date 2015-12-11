@@ -30,7 +30,10 @@ from rinoh.frontend.rst import ReStructuredTextParser
 from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOptions
 from rinohlib.stylesheets.matcher import matcher
 
+from flask import Flask, request, send_file
 from jinja2 import Environment, PackageLoader
+
+app = Flask(__name__)
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 FONT_PATH = os.path.join(PATH, 'fonts')
@@ -314,3 +317,40 @@ def render_certificate(data, to_file=False):
         pdf_file.seek(0)
         return pdf_file
     print('Render complete')
+
+
+def render_and_send_certificate(data):
+    pdf_file = render_certificate(data)
+    response = send_file(pdf_file,
+                         attachment_filename='certificate.pdf',
+                         mimetype='application/pdf')
+    response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+    return response
+
+
+@app.route('/', methods=['POST'])
+def certificate():
+    print(request)
+    print(request.form)
+    json_data = request.form['data']
+    data = json.loads(json_data)
+    print(data)
+    try:
+        return render_and_send_certificate(data)
+    except Exception as e:
+        print(e)
+        pass
+
+
+@app.route('/', methods=['GET'])
+def test():
+    try:
+        return render_and_send_certificate(data_test)
+    except Exception as e:
+        print('Error: ' + str(e))
+        pass
+
+
+if __name__ == "__main__":
+    # render_certificate(data_test, to_file=True)
+    app.run(debug=True)
