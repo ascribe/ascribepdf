@@ -1,12 +1,13 @@
 from io import BytesIO, StringIO
-import qrcode
+
+import json
 import requests
 import os
 
-import json
 
-from docutils.nodes import
-from docutils.parsers.rst import directives
+import qrcode
+
+from docutils import nodes
 from docutils.parsers import rst
 
 from rinoh.font import TypeFace
@@ -30,6 +31,7 @@ from rinoh.text import StyledText
 from rinoh.color import HexColor
 
 from rinoh.frontend.rst import ReStructuredTextParser
+from rinoh.frontend.rst.nodes import Image as rstImage
 
 from rinohlib.templates.base import DocumentTemplate, ContentsPart, DocumentOptions
 from rinohlib.stylesheets.matcher import matcher
@@ -64,12 +66,30 @@ data_test = {'title': '111111111', 'filesize': 370611, 'edition_number': 10,
              'verify_owner_url': 'http://localhost.com:3000/coa_verify/'}
 
 
-class AscribeQR(rst.Directive):
-    def run(self):
-        thenode = foo(text=self.arguments[0])
-        return [thenode]
-directives.register_directive('ascribeqr', AscribeQR)
+class qrimage(nodes.image):
+    pass
 
+
+class QRCode(rst.Directive):
+    required_arguments = 1
+
+    def run(self):
+        self.options['content'] = rst.directives.uri(self.arguments[0])
+        image_node = qrimage(rawsource=self.block_text, **self.options)
+        return [image_node]
+
+
+rst.directives.register_directive('qrcode', QRCode)
+
+
+class QRImage(rstImage):
+    def build_flowable(self):
+        img = qrcode.make(self.get('content'))
+        output = BytesIO()
+        img.save(output)
+        output.flush()
+        output.seek(0)
+        return Image(output, width=3*CM, style='QR code')
 
 
 def font(filename):
@@ -153,7 +173,7 @@ STYLESHEET('header verify',
            font_color=Var('blue'))
 
 STYLESHEET('QR image',
-           horizontal_align=RIGHT)
+           horizontal_align=CENTER)
 
 STYLESHEET('bulleted list',
            ordered=False,
@@ -225,16 +245,6 @@ class HeaderFlowables(GroupedFlowables):
         yield HorizontalRule()
 
 
-class QRFlowables(GroupedFlowables):
-    def flowables(self, document):
-        img = qrcode.make(document.data['check_stamp_url'])
-        output = BytesIO()
-        img.save(output)
-        output.flush()
-        output.seek(0)
-        yield Image(output, scale=FIT, style='QR code')
-
-
 class FooterFlowables(GroupedFlowables):
     def __init__(self):
         super().__init__(style='footer')
@@ -270,10 +280,6 @@ class AscribePage(Page):
 
         self.header = DownExpandingContainer('header', body, 0 * PT, 0 * PT)
         self.header << HeaderFlowables()
-        self.qrcode = FlowablesContainer('qr', body, top=0, right=body_width,
-                                         width=3 * CM,
-                                         height=self.header.height - 10 * PT)
-        self.qrcode << QRFlowables()
         self.footer = UpExpandingContainer('footer', body, 0 * PT, body.height)
         self.footer << FooterFlowables()
 
