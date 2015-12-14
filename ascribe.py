@@ -5,6 +5,10 @@ import os
 
 import json
 
+from docutils.nodes import
+from docutils.parsers.rst import directives
+from docutils.parsers import rst
+
 from rinoh.font import TypeFace
 from rinoh.font.opentype import OpenTypeFont
 from rinoh.font.style import REGULAR, LIGHT
@@ -58,6 +62,18 @@ data_test = {'title': '111111111', 'filesize': 370611, 'edition_number': 10,
              'check_stamp_url': 'http://localhost.com:3000/coa_verify/?message=1111111111%2A111111111%2A10%2F13%2A2015%2A2015Jul29-16%3A21%3A51&signature=2CEC38ACD51F91D0A38CF85E8092C337CC18C4ADE1E0F86563D28A97C0442F9EF9202E25E95D85BB1BA5AC3FB18E290E51BC9D1A410D065C7EF716168A13C44F7FA1431404367A4934ECCCE3AA0DA6921A908909B0134A10D4CDBD372C53967FD02760B99FDBE21E1DEB64532305351CFB35E0245B26D54682CAF01F359DD0EDL',
              'ownership_history': [['Jul. 29, 2015, 16:21:51', 'Registered by Schweinehund']], 'num_editions': 13,
              'verify_owner_url': 'http://localhost.com:3000/coa_verify/'}
+
+
+class AscribeQR(rst.Directive):
+    def run(self):
+        thenode = foo(text=self.arguments[0])
+        return [thenode]
+directives.register_directive('ascribeqr', AscribeQR)
+
+
+
+def font(filename):
+    return os.path.join(FONT_PATH, filename)
 
 
 def font(filename):

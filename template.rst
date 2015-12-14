@@ -53,6 +53,8 @@ CRYPTOGRAPHIC STAMP
 
     Use the summary and signature below to authenticate this certificate on:
 
+    .. ascribeqr::
+
     :Link\:: `{{ verify_owner_url }} <{{ check_stamp_url }}>`__
     :Summary\:: {{ crypto_message }}
     :Signature\:: {{ crypto_signature }}
