@@ -47,6 +47,7 @@ FONT_PATH = os.path.join(PATH, 'fonts')
 jinja_env = Environment(loader=PackageLoader(__name__, '.'))
 
 TEMPLATE = jinja_env.get_template('template.rst')
+TEMPLATE_DIAMOND = jinja_env.get_template('template_diamond.rst')
 
 # sample JSON input
 data_test = {'title': '111111111', 'filesize': 370611, 'edition_number': 10,
@@ -327,6 +328,20 @@ class AscribeCertificate(DocumentTemplate):
         self.add_page(page, 1)
 
 
+class AscribeCertificateDiamond(DocumentTemplate):
+    sections = [AscribeCertificateSection]
+
+    def __init__(self, data):
+        self.data = data
+        with StringIO(TEMPLATE_DIAMOND.render(**data)) as rst_file:
+            content_flowables = ReStructuredTextParser().parse(rst_file)
+        super().__init__(content_flowables, options=OPTIONS, backend=pdf)
+
+    def setup(self):
+        page = AscribePage(self)
+        self.add_page(page, 1)
+
+
 def render_certificate(data, to_file=False):
     data['crypto_signature'] = '\N{ZERO WIDTH SPACE}'.join(data['crypto_signature'])
     certificate = AscribeCertificate(data)
@@ -341,8 +356,31 @@ def render_certificate(data, to_file=False):
     print('Render complete')
 
 
+def render_certificate_diamond(data, to_file=False):
+    data['crypto_signature'] = '\N{ZERO WIDTH SPACE}'.join(data['crypto_signature'])
+    certificate = AscribeCertificateDiamond(data)
+    print('Start pdf rendering')
+    if to_file:
+        certificate.render('test')
+    else:
+        pdf_file = BytesIO()
+        certificate.render(file=pdf_file)
+        pdf_file.seek(0)
+        return pdf_file
+    print('Render complete')
+
+
 def render_and_send_certificate(data):
     pdf_file = render_certificate(data)
+    response = send_file(pdf_file,
+                         attachment_filename='certificate.pdf',
+                         mimetype='application/pdf')
+    response.headers.add('content-length', str(pdf_file.getbuffer().nbytes))
+    return response
+
+
+def render_and_send_certificate_diamond(data):
+    pdf_file = render_certificate_diamond(data)
     response = send_file(pdf_file,
                          attachment_filename='certificate.pdf',
                          mimetype='application/pdf')
@@ -370,6 +408,20 @@ def test():
         return render_and_send_certificate(data_test)
     except Exception as e:
         print('Error: ' + str(e))
+        pass
+
+
+@app.route('/diamondscoa', methods=['POST'])
+def certificate_diamond():
+    print(request)
+    print(request.form)
+    json_data = request.form['data']
+    data = json.loads(json_data)
+    print(data)
+    try:
+        return render_and_send_certificate_diamond(data)
+    except Exception as e:
+        print(e)
         pass
 
 
