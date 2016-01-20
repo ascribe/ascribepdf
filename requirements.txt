@@ -10,4 +10,4 @@ purepng==0.1.1
 qrcode==5.1
 requests==2.6.0
 six==1.10.0
-git+https://github.com/brechtm/rinohtype.git@4aa2a151b2ad03bf5130658a6ba4a7b9d441978f
+git+https://github.com/brechtm/rinohtype.git@ascribe
