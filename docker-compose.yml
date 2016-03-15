@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  web:
+    build: .
+    ports:
+      - '55000:5000'
+    volumes:
+      - .:/usr/src/app/
+    environment:
+      ASCRIBEPDF_CONFIG_MODULE: config.Dev
+      ASCRIBEPDF_HOST: 0.0.0.0
+    command: python ascribe.py
