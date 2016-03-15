@@ -46,10 +46,10 @@ app.config.from_object(
 PATH = os.path.dirname(os.path.realpath(__file__))
 FONT_PATH = os.path.join(PATH, 'fonts')
 
-jinja_env = Environment(loader=PackageLoader(__name__, '.'))
+jinja_env = Environment(loader=PackageLoader(__name__, 'templates'))
 
-TEMPLATE = jinja_env.get_template('template.rst')
-TEMPLATE_DIAMOND = jinja_env.get_template('template_diamond.rst')
+TEMPLATE_EDITION = jinja_env.get_template('edittion.rst')
+TEMPLATE_DIAMOND = jinja_env.get_template('diamond.rst')
 
 # sample JSON input
 data_test = {'title': '111111111', 'filesize': 370611, 'edition_number': 10,
@@ -321,7 +321,7 @@ class AscribeCertificate(DocumentTemplate):
 
     def __init__(self, data):
         self.data = data
-        with StringIO(TEMPLATE.render(**data)) as rst_file:
+        with StringIO(TEMPLATE_EDITION.render(**data)) as rst_file:
             content_flowables = ReStructuredTextParser().parse(rst_file)
         super().__init__(content_flowables, options=OPTIONS, backend=pdf)
 
