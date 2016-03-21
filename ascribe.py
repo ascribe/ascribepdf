@@ -48,7 +48,7 @@ FONT_PATH = os.path.join(PATH, 'fonts')
 
 jinja_env = Environment(loader=PackageLoader(__name__, 'templates'))
 
-TEMPLATE_EDITION = jinja_env.get_template('edittion.rst')
+DEFAULT_TEMPLATE_FILENAME = 'edition.rst'
 TEMPLATE_DIAMOND = jinja_env.get_template('diamond.rst')
 
 # sample JSON input
@@ -319,9 +319,11 @@ OPTIONS = DocumentOptions(stylesheet=STYLESHEET,
 class AscribeCertificate(DocumentTemplate):
     sections = [AscribeCertificateSection]
 
-    def __init__(self, data):
+    def __init__(self, data, template_filename=None):
         self.data = data
-        with StringIO(TEMPLATE_EDITION.render(**data)) as rst_file:
+        template_filename = template_filename or DEFAULT_TEMPLATE_FILENAME
+        template = jinja_env.get_template(template_filename)
+        with StringIO(template.render(**data)) as rst_file:
             content_flowables = ReStructuredTextParser().parse(rst_file)
         super().__init__(content_flowables, options=OPTIONS, backend=pdf)
 
@@ -344,9 +346,9 @@ class AscribeCertificateDiamond(DocumentTemplate):
         self.add_page(page, 1)
 
 
-def render_certificate(data, to_file=False):
+def render_certificate(data, to_file=False, template_filename=None):
     data['crypto_signature'] = '\N{ZERO WIDTH SPACE}'.join(data['crypto_signature'])
-    certificate = AscribeCertificate(data)
+    certificate = AscribeCertificate(data, template_filename=template_filename)
     print('Start pdf rendering')
     if to_file:
         certificate.render('test')
@@ -372,8 +374,8 @@ def render_certificate_diamond(data, to_file=False):
     print('Render complete')
 
 
-def render_and_send_certificate(data):
-    pdf_file = render_certificate(data)
+def render_and_send_certificate(data, template_filename=None):
+    pdf_file = render_certificate(data, template_filename=template_filename)
     response = send_file(pdf_file,
                          attachment_filename='certificate.pdf',
                          mimetype='application/pdf')
@@ -390,16 +392,28 @@ def render_and_send_certificate_diamond(data):
     return response
 
 
+@app.route('/piece', methods=['POST'])
+def generate_piece_certificate():
+    try:
+        return render_and_send_certificate(request.json,
+                                           template_filename='piece.rst')
+    except Exception as e:
+        # TODO use logging
+        print(e)
+
+
 @app.route('/', methods=['POST'])
-def certificate():
+def generate_edition_certificate():
     print(request)
     print(request.form)
     json_data = request.form['data']
     data = json.loads(json_data)
     print(data)
     try:
-        return render_and_send_certificate(data)
+        return render_and_send_certificate(data,
+                                           template_filename='edition.rst')
     except Exception as e:
+        # TODO use logging
         print(e)
         pass
 
