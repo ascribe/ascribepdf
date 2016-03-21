@@ -41,7 +41,7 @@ from jinja2 import Environment, PackageLoader
 
 app = Flask(__name__)
 app.config.from_object(
-    os.environ.get('ASCRIBEPDF_CONFIG_MODULE', 'config.Production'))
+    os.environ.get('ASCRIBEPDF_CONFIG_MODULE', 'config.Prod'))
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 FONT_PATH = os.path.join(PATH, 'fonts')
