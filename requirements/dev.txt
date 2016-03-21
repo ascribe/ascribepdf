@@ -1,0 +1,6 @@
+-r common.txt
+
+ipython
+ipdb
+pytest
+pytest-cov

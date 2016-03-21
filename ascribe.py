@@ -40,6 +40,8 @@ from flask import Flask, request, send_file
 from jinja2 import Environment, PackageLoader
 
 app = Flask(__name__)
+app.config.from_object(
+    os.environ.get('ASCRIBEPDF_CONFIG_MODULE', 'config.Production'))
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 FONT_PATH = os.path.join(PATH, 'fonts')
@@ -426,5 +428,6 @@ def certificate_diamond():
 
 
 if __name__ == "__main__":
-    # render_certificate(data_test, to_file=True)
-    app.run(debug=True)
+    # render_certificate(data_test, to_file=True
+    host = os.environ.get('ASCRIBEPDF_HOST', '127.0.0.1')
+    app.run(host=host)
