@@ -46,7 +46,7 @@ app.config.from_object(
 PATH = os.path.dirname(os.path.realpath(__file__))
 FONT_PATH = os.path.join(PATH, 'fonts')
 
-jinja_env = Environment(loader=PackageLoader(__name__, 'templates'))
+jinja_env = Environment(loader=PackageLoader(__name__))
 
 DEFAULT_TEMPLATE_FILENAME = 'edition.rst'
 TEMPLATE_DIAMOND = jinja_env.get_template('diamond.rst')
