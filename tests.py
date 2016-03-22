@@ -68,8 +68,13 @@ def test_app(app):
     assert app.testing
 
 
-def test_post_edition_certificate(client):
+def test_deprecated_post_edition_certificate(client):
     response = client.post('/', data={'data': json.dumps(edition_data)})
+    assert response.status_code == 200
+
+
+def test_post_edition_certificate(client):
+    response = client.post('/edition', data={'data': json.dumps(edition_data)})
     assert response.status_code == 200
 
 
