@@ -393,27 +393,26 @@ def generate_piece_certificate():
             print(e)
 
 
-@app.route('/', methods=['POST'])
+@app.route('/', methods=['GET', 'POST'])
 def generate_edition_certificate():
-    print(request)
-    print(request.form)
-    json_data = request.form['data']
-    data = json.loads(json_data)
-    print(data)
-    try:
-        return render_and_send_certificate(data,
-                                           template_filename='edition.rst')
-    except Exception as e:
-        # TODO use logging
-        print(e)
-
-
-@app.route('/', methods=['GET'])
-def test():
-    try:
-        return render_and_send_certificate(dummies.edition)
-    except Exception as e:
-        print('Error: ' + str(e))
+    if request.method == 'GET':
+        try:
+            return render_and_send_certificate(dummies.edition)
+        except Exception as e:
+            # TODO use logging
+            print('Error: ' + str(e))
+    else:
+        print(request)
+        print(request.form)
+        json_data = request.form['data']
+        data = json.loads(json_data)
+        print(data)
+        try:
+            return render_and_send_certificate(data,
+                                               template_filename='edition.rst')
+        except Exception as e:
+            # TODO use logging
+            print(e)
 
 
 @app.route('/diamondscoa', methods=['POST'])
