@@ -415,7 +415,6 @@ def generate_edition_certificate():
     except Exception as e:
         # TODO use logging
         print(e)
-        pass
 
 
 @app.route('/', methods=['GET'])
@@ -424,7 +423,6 @@ def test():
         return render_and_send_certificate(data_test)
     except Exception as e:
         print('Error: ' + str(e))
-        pass
 
 
 @app.route('/diamondscoa', methods=['POST'])
@@ -438,7 +436,6 @@ def certificate_diamond():
         return render_and_send_certificate_diamond(data)
     except Exception as e:
         print(e)
-        pass
 
 
 if __name__ == "__main__":
