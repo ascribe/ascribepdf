@@ -380,7 +380,8 @@ def render_and_send_certificate_diamond(data):
 def generate_piece_certificate():
     if request.method == 'GET':
         try:
-            return render_and_send_certificate(dummies.piece)
+            return render_and_send_certificate(dummies.piece,
+                                               template_filename='piece.rst')
         except Exception as e:
             # TODO use logging
             print('Error: ' + str(e))
