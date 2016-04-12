@@ -20,7 +20,6 @@ Certificate of Authenticity
 {{ title }}
 -----------
 
-:Edition\:: {{ edition_number }}/{{ num_editions }}
 :Created by\:: {{ artist_name }}
 :Owner\:: {{ owner }}
 
@@ -34,15 +33,6 @@ ARTWORK DETAILS
 :Artwork ID\:: {{bitcoin_id}}
 :File Extension\:: {{ filename }}
 :File Size\:: {{ filesize }} bytes
-
---------------------------------------------------------------------------------
-
-PROVENANCE/OWNERSHIP HISTORY
-............................
-
-{% for timestamp, action in ownership_history %}
-* {{ timestamp }} - {{ action }}
-{% endfor %}
 
 --------------------------------------------------------------------------------
 
